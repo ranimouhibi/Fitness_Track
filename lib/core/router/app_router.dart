@@ -17,6 +17,7 @@ import '../../features/coaching/routes.dart';
 import '../../features/coaching/ui/bookings_page.dart';
 import '../../features/progress/routes.dart';
 import '../../features/admin/ui/coach_requests_page.dart';
+import '../../features/admin/ui/requests_inbox_page.dart';
 
 // Client-side coaching pages (users browse and book coaches).
 final _userCoachingRoutes = coachingRoutes
@@ -46,6 +47,7 @@ final _coachRoutes = <RouteBase>[
 // Admin pages: the same bar as the user. Training is the admin version of WorkoutPage.
 final _adminRoutes = <RouteBase>[
   GoRoute(path: '/admin/profile', builder: (_, __) => const ProfilePage()),
+  GoRoute(path: '/admin/requests', builder: (_, __) => const RequestsInboxPage()),
   GoRoute(
     path: '/admin/training',
     builder: (_, __) => const WorkoutPage(isAdmin: true),
