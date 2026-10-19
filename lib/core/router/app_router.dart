@@ -19,8 +19,15 @@ import '../../features/admin/ui/coach_requests_page.dart';
 // Client-side coaching pages (users browse and book coaches).
 final _userCoachingRoutes = coachingRoutes
     .whereType<GoRoute>()
-    .where((r) => r.path.startsWith('/coaches'))
+    .where((r) => r.path.startsWith('/coaches') || r.path == '/chat')
     .toList();
+
+final _clientBookingRoutes = <RouteBase>[
+  GoRoute(
+    path: '/my-bookings',
+    builder: (_, __) => const BookingsPage(isCoach: false),
+  ),
+];
 
 // Coach-side pages: the same bar as the user, with Jobs last.
 final _coachRoutes = <RouteBase>[
@@ -62,6 +69,7 @@ final appRouter = GoRouter(
         ...nutritionRoutes,
         ...storeRoutes,
         ..._userCoachingRoutes,
+        ..._clientBookingRoutes,
       ],
     ),
     ShellRoute(
