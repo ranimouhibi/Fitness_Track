@@ -155,6 +155,8 @@ const List<String> schemaStatements = [
     condition TEXT NOT NULL CHECK (condition IN ('new', 'used')),
     price_tnd REAL NOT NULL,
     stock INTEGER NOT NULL DEFAULT 0,
+    image_paths TEXT,
+    review_note TEXT,
     source TEXT NOT NULL CHECK (source IN ('app_store', 'community')),
     seller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'approved'
@@ -162,6 +164,8 @@ const List<String> schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )
   ''',
+
+  ...storeOrderTableStatements,
 
   // ---------- Coaching ----------
   '''
@@ -234,4 +238,38 @@ const List<String> schemaStatements = [
   'CREATE INDEX idx_messages_booking ON messages(booking_id)',
   'CREATE INDEX idx_checkins_user ON weekly_checkins(user_id)',
   'CREATE INDEX idx_content_requests_status ON content_requests(status)',
+];
+
+const storeOrderTableStatements = <String>[
+  '''
+  CREATE TABLE store_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    buyer_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    delivery_address TEXT NOT NULL,
+    total_tnd REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'placed'
+      CHECK (status IN ('placed', 'processing', 'completed', 'cancelled')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+  ''',
+  '''
+  CREATE TABLE store_order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL REFERENCES store_orders(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+    product_title TEXT NOT NULL,
+    unit_price_tnd REAL NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    line_total_tnd REAL NOT NULL
+  )
+  ''',
+  'CREATE INDEX idx_store_orders_user ON store_orders(user_id, id DESC)',
+];
+
+const storeUpgradeV2Statements = <String>[
+  'ALTER TABLE products ADD COLUMN image_paths TEXT',
+  'ALTER TABLE products ADD COLUMN review_note TEXT',
+  ...storeOrderTableStatements,
 ];

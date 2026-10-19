@@ -10,7 +10,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'fittrack.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
 
   Database? _db;
 
@@ -39,6 +39,13 @@ class DatabaseHelper {
           await db.execute(statement);
         }
         await _seedAccounts(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          for (final statement in storeUpgradeV2Statements) {
+            await db.execute(statement);
+          }
+        }
       },
     );
   }
