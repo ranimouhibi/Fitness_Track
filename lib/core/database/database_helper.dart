@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'schema.dart';
@@ -9,12 +12,21 @@ class DatabaseHelper {
   static const _dbName = 'fittrack.db';
   static const _dbVersion = 1;
 
+  // Default admin account created with the database. Change the password after your first sign-in.
+  static const adminEmail = 'admin@fittrack.com';
+  static const _adminPassword = 'Admin123!';
+
   Database? _db;
 
   /// Use this everywhere: `final db = await DatabaseHelper.instance.database;`
   Future<Database> get database async {
     _db ??= await _open();
     return _db!;
+  }
+
+  /// Same hash is used for sign-up and sign-in. Never store the plain password.
+  static String hashPassword(String password) {
+    return sha256.convert(utf8.encode(password)).toString();
   }
 
   Future<Database> _open() async {
@@ -30,9 +42,19 @@ class DatabaseHelper {
         for (final statement in schemaStatements) {
           await db.execute(statement);
         }
+        await _seedAdmin(db);
       },
-      // onUpgrade goes here when the schema changes (see note below).
     );
+  }
+
+  Future<void> _seedAdmin(Database db) async {
+    await db.insert('users', {
+      'role': 'admin',
+      'first_name': 'Admin',
+      'last_name': 'FitTrack',
+      'email': adminEmail,
+      'password_hash': hashPassword(_adminPassword),
+    });
   }
 
   Future<void> close() async {
