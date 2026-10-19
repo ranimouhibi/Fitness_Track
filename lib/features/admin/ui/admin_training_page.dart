@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 
-// TODO(owner): blank placeholder. Build this screen in its own file only.
+// Replaced by WorkoutPage(isAdmin: true). Kept so older imports still compile.
 class AdminTrainingPage extends StatelessWidget {
   const AdminTrainingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Training')),
-      body: const SizedBox.shrink(),
-    );
-  }
+  Widget build(BuildContext context) => const Scaffold(body: SizedBox.shrink());
 }

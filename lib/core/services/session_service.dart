@@ -41,9 +41,9 @@ final sessionProvider =
 String homeRouteFor(SessionUser user) {
   switch (user.role) {
     case UserRole.admin:
-      return '/admin/requests';
+      return '/admin/profile';
     case UserRole.coach:
-      return user.coachStatus == 'approved' ? '/bookings' : '/coach/pending';
+      return user.coachStatus == 'approved' ? '/coach/jobs' : '/coach/pending';
     case UserRole.user:
       return '/profile';
   }

@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/widgets/sign_out_overlay.dart';
 
-// Bottom nav for coaches. TODO(lead): define tabs.
 class CoachShell extends StatelessWidget {
   final Widget child;
-  final int index;
-  const CoachShell({super.key, required this.child, required this.index});
+  final String location;
+  const CoachShell({super.key, required this.child, required this.location});
+
+  static const _tabs = [
+    ('/coach/profile', 'Profile', Icons.person_outline),
+    ('/coach/training', 'Training', Icons.fitness_center),
+    ('/coach/nutrition', 'Nutrition', Icons.apple),
+    ('/coach/store', 'Store', Icons.shopping_bag_outlined),
+    ('/coach/jobs', 'Jobs', Icons.work_outline),
+  ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(body: child);
+  Widget build(BuildContext context) {
+    final index = _tabs.indexWhere((t) => location.startsWith(t.$1));
+    return Scaffold(
+      body: SignOutOverlay(child: child),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index < 0 ? 0 : index,
+        onDestinationSelected: (i) => context.go(_tabs[i].$1),
+        destinations: [
+          for (final t in _tabs)
+            NavigationDestination(icon: Icon(t.$3), label: t.$2),
+        ],
+      ),
+    );
+  }
 }

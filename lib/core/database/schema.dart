@@ -34,13 +34,15 @@ const List<String> schemaStatements = [
   ''',
 
   // ---------- Training ----------
-  '''
+   '''
   CREATE TABLE exercises (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     muscle_group TEXT NOT NULL,
     equipment TEXT,
     level TEXT,
+    description TEXT,
+    instructions TEXT,
     default_sets INTEGER,
     default_reps INTEGER,
     media_path TEXT,
@@ -50,7 +52,7 @@ const List<String> schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )
   ''',
-  '''
+   '''
   CREATE TABLE programs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -60,6 +62,7 @@ const List<String> schemaStatements = [
     weeks INTEGER,
     days_per_week INTEGER,
     minutes_per_session INTEGER,
+    description TEXT,
     kcal_target INTEGER,
     protein_pct INTEGER,
     carbs_pct INTEGER,

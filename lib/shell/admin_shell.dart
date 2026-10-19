@@ -8,11 +8,11 @@ class AdminShell extends StatelessWidget {
   const AdminShell({super.key, required this.child, required this.location});
 
   static const _tabs = [
+    ('/admin/profile', 'Profile', Icons.person_outline),
     ('/admin/training', 'Training', Icons.fitness_center),
     ('/admin/nutrition', 'Nutrition', Icons.apple),
     ('/admin/store', 'Store', Icons.shopping_bag_outlined),
-    ('/admin/coach-requests', 'Coaches', Icons.groups_outlined),
-    ('/admin/requests', 'Requests', Icons.inbox_outlined),
+    ('/admin/coaches', 'Coaches', Icons.groups_outlined),
   ];
 
   @override
