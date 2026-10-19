@@ -12,7 +12,6 @@ import '../../features/nutrition/ui/nutrition_page.dart';
 import '../../features/nutrition/ui/add_food_page.dart';
 import '../../features/nutrition/ui/pending_foods_page.dart';
 import '../../features/store/routes.dart';
-import '../../features/store/ui/store_page.dart';
 import '../../features/coaching/routes.dart';
 import '../../features/coaching/ui/bookings_page.dart';
 import '../../features/progress/routes.dart';
@@ -34,11 +33,11 @@ final _clientBookingRoutes = <RouteBase>[
 
 // Coach-side pages: the same bar as the user, with Jobs last.
 final _coachRoutes = <RouteBase>[
-  GoRoute(path: '/coach/profile', builder: (_, __) => const ProfilePage()),
-  GoRoute(path: '/coach/training', builder: (_, __) => const WorkoutPage()),
-  GoRoute(path: '/coach/nutrition', builder: (_, __) => const NutritionPage()),
-  GoRoute(path: '/coach/store', builder: (_, __) => const StorePage()),
-  GoRoute(path: '/coach/jobs', builder: (_, __) => const BookingsPage()),
+  GoRoute(path: '/coach/profile', builder: (_, _) => const ProfilePage()),
+  GoRoute(path: '/coach/training', builder: (_, _) => const WorkoutPage()),
+  GoRoute(path: '/coach/nutrition', builder: (_, _) => const NutritionPage()),
+  ...storeRoutesFor('/coach/store'),
+  GoRoute(path: '/coach/jobs', builder: (_, _) => const BookingsPage()),
   ...coachingRoutes
       .whereType<GoRoute>()
       .where((r) => !r.path.startsWith('/coaches')),
@@ -50,7 +49,7 @@ final _adminRoutes = <RouteBase>[
   GoRoute(path: '/admin/requests', builder: (_, __) => const RequestsInboxPage()),
   GoRoute(
     path: '/admin/training',
-    builder: (_, __) => const WorkoutPage(isAdmin: true),
+    builder: (_, _) => const WorkoutPage(isAdmin: true),
   ),
   GoRoute(
     path: '/admin/nutrition',
@@ -67,7 +66,7 @@ final _adminRoutes = <RouteBase>[
   GoRoute(path: '/admin/store', builder: (_, __) => const StorePage()),
   GoRoute(
     path: '/admin/coaches',
-    builder: (_, __) => const CoachRequestsPage(),
+    builder: (_, _) => const CoachRequestsPage(),
   ),
 ];
 

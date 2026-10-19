@@ -48,6 +48,7 @@ class DatabaseHelper {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
+          for (final statement in storeUpgradeV2Statements) {
           for (final statement in coachSchedulingStatements) {
             await db.execute(statement);
           }
