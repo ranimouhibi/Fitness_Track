@@ -10,7 +10,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'fittrack.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
 
   Database? _db;
 
@@ -38,7 +38,26 @@ class DatabaseHelper {
         for (final statement in schemaStatements) {
           await db.execute(statement);
         }
+        for (final statement in coachSchedulingStatements) {
+          await db.execute(statement);
+        }
+        for (final statement in coachingTriggerStatements) {
+          await db.execute(statement);
+        }
         await _seedAccounts(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          for (final statement in coachSchedulingStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in coachSchedulingBackfillStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in coachingTriggerStatements) {
+            await db.execute(statement);
+          }
+        }
       },
     );
   }
