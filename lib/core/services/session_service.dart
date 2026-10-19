@@ -10,6 +10,12 @@ class SessionUser {
   final String firstName;
   final String lastName;
   final String email;
+  final String? phone;
+  final String? birthDate;
+  final double? heightCm;
+  final double? weightKg;
+  final String? goal;
+  final int? yearsExperience;
   final UserRole role;
   final String? coachStatus;
 
@@ -18,6 +24,12 @@ class SessionUser {
     required this.firstName,
     required this.lastName,
     required this.email,
+    this.phone,
+    this.birthDate,
+    this.heightCm,
+    this.weightKg,
+    this.goal,
+    this.yearsExperience,
     required this.role,
     this.coachStatus,
   });
@@ -30,6 +42,8 @@ class SessionNotifier extends Notifier<SessionUser?> {
   SessionUser? build() => null;
 
   void signIn(SessionUser user) => state = user;
+
+  void updateProfile(SessionUser user) => state = user;
 
   void signOut() => state = null;
 }

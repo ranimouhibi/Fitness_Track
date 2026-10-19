@@ -9,17 +9,27 @@ import '../../features/workout/routes.dart';
 import '../../features/workout/ui/workout_page.dart';
 import '../../features/nutrition/routes.dart';
 import '../../features/nutrition/ui/nutrition_page.dart';
+import '../../features/nutrition/ui/add_food_page.dart';
+import '../../features/nutrition/ui/pending_foods_page.dart';
 import '../../features/store/routes.dart';
 import '../../features/coaching/routes.dart';
 import '../../features/coaching/ui/bookings_page.dart';
 import '../../features/progress/routes.dart';
 import '../../features/admin/ui/coach_requests_page.dart';
+import '../../features/admin/ui/requests_inbox_page.dart';
 
 // Client-side coaching pages (users browse and book coaches).
 final _userCoachingRoutes = coachingRoutes
     .whereType<GoRoute>()
-    .where((r) => r.path.startsWith('/coaches'))
+    .where((r) => r.path.startsWith('/coaches') || r.path == '/chat')
     .toList();
+
+final _clientBookingRoutes = <RouteBase>[
+  GoRoute(
+    path: '/my-bookings',
+    builder: (_, __) => const BookingsPage(isCoach: false),
+  ),
+];
 
 // Coach-side pages: the same bar as the user, with Jobs last.
 final _coachRoutes = <RouteBase>[
@@ -35,13 +45,25 @@ final _coachRoutes = <RouteBase>[
 
 // Admin pages: the same bar as the user. Training is the admin version of WorkoutPage.
 final _adminRoutes = <RouteBase>[
-  GoRoute(path: '/admin/profile', builder: (_, _) => const ProfilePage()),
+  GoRoute(path: '/admin/profile', builder: (_, __) => const ProfilePage()),
+  GoRoute(path: '/admin/requests', builder: (_, __) => const RequestsInboxPage()),
   GoRoute(
     path: '/admin/training',
     builder: (_, _) => const WorkoutPage(isAdmin: true),
   ),
-  GoRoute(path: '/admin/nutrition', builder: (_, _) => const NutritionPage()),
-  ...storeRoutesFor('/admin/store', admin: true),
+  GoRoute(
+    path: '/admin/nutrition',
+    builder: (_, __) => const NutritionPage(isAdmin: true),
+  ),
+  GoRoute(
+    path: '/admin/nutrition/add-food',
+    builder: (_, __) => const AddFoodPage(isAdmin: true),
+  ),
+  GoRoute(
+    path: '/admin/nutrition/pending-foods',
+    builder: (_, __) => const PendingFoodsPage(),
+  ),
+  GoRoute(path: '/admin/store', builder: (_, __) => const StorePage()),
   GoRoute(
     path: '/admin/coaches',
     builder: (_, _) => const CoachRequestsPage(),
@@ -61,6 +83,7 @@ final appRouter = GoRouter(
         ...nutritionRoutes,
         ...storeRoutes,
         ..._userCoachingRoutes,
+        ..._clientBookingRoutes,
       ],
     ),
     ShellRoute(
