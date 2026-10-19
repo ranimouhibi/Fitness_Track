@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../shell/user_shell.dart';
+import '../../shell/admin_shell.dart';
 import '../../features/auth/routes.dart';
 import '../../features/profile/routes.dart';
 import '../../features/workout/routes.dart';
@@ -24,7 +25,11 @@ final appRouter = GoRouter(
         ...coachingRoutes,
       ],
     ),
+    ShellRoute(
+      builder: (context, state, child) =>
+          AdminShell(location: state.uri.toString(), child: child),
+      routes: [...adminRoutes],
+    ),
     ...progressRoutes,
-    ...adminRoutes,
   ],
 );

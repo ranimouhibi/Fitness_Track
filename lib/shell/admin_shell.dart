@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/widgets/sign_out_overlay.dart';
 
-// Bottom nav for admin: Training, Nutrition, Store, Coaches, Requests. TODO(lead): define tabs.
 class AdminShell extends StatelessWidget {
   final Widget child;
-  final int index;
-  const AdminShell({super.key, required this.child, required this.index});
+  final String location;
+  const AdminShell({super.key, required this.child, required this.location});
+
+  static const _tabs = [
+    ('/admin/training', 'Training', Icons.fitness_center),
+    ('/admin/nutrition', 'Nutrition', Icons.apple),
+    ('/admin/store', 'Store', Icons.shopping_bag_outlined),
+    ('/admin/coach-requests', 'Coaches', Icons.groups_outlined),
+    ('/admin/requests', 'Requests', Icons.inbox_outlined),
+  ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(body: child);
+  Widget build(BuildContext context) {
+    final index = _tabs.indexWhere((t) => location.startsWith(t.$1));
+    return Scaffold(
+      body: SignOutOverlay(child: child),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index < 0 ? 0 : index,
+        onDestinationSelected: (i) => context.go(_tabs[i].$1),
+        destinations: [
+          for (final t in _tabs)
+            NavigationDestination(icon: Icon(t.$3), label: t.$2),
+        ],
+      ),
+    );
+  }
 }

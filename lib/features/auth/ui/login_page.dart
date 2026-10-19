@@ -1,9 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/auth_repository.dart';
+import 'widgets/auth_widgets.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _repo = AuthRepository();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final user = await _repo.signIn(
+        email: _email.text,
+        password: _password.text,
+      );
+      ref.read(sessionProvider.notifier).signIn(user);
+      if (mounted) context.go(homeRouteFor(user));
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,19 +68,14 @@ class LoginPage extends StatelessWidget {
                       size: 44, color: AppColors.primary),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'FitTrack',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                const Text('FitTrack',
+                    style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                const Text(
-                  'Train. Eat. Track your progress.',
-                  style: TextStyle(color: AppColors.white, fontSize: 15),
-                ),
+                const Text('Train. Eat. Track your progress.',
+                    style: TextStyle(color: AppColors.white, fontSize: 15)),
               ],
             ),
           ),
@@ -47,48 +83,32 @@ class LoginPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const Text(
-                  'Sign in',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                const Text('Sign in',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                AuthField(
+                  label: 'Email',
+                  controller: _email,
+                  hint: 'you@email.com',
+                  keyboard: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
-                const _FieldLabel('Email'),
-                const SizedBox(height: 6),
-                _field(hint: 'you@email.com'),
-                const SizedBox(height: 16),
-                const _FieldLabel('Password'),
-                const SizedBox(height: 6),
-                _field(hint: 'Password', obscure: true),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text('Forgot password?'),
-                  ),
+                AuthField(
+                  label: 'Password',
+                  controller: _password,
+                  hint: 'Password',
+                  obscure: true,
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => context.go('/profile'),
-                    child: const Text(
-                      'Sign in',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                const SizedBox(height: 12),
+                ErrorText(_error),
+                const SizedBox(height: 12),
+                AuthButton(
+                  label: 'Sign in',
+                  loading: _loading,
+                  onPressed: _signIn,
                 ),
                 const SizedBox(height: 12),
                 Center(
@@ -101,43 +121,6 @@ class LoginPage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _field({required String hint, bool obscure = false}) {
-    return TextField(
-      obscureText: obscure,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.textSecondary,
-        fontWeight: FontWeight.w600,
       ),
     );
   }

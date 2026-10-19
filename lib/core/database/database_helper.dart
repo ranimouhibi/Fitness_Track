@@ -12,10 +12,6 @@ class DatabaseHelper {
   static const _dbName = 'fittrack.db';
   static const _dbVersion = 1;
 
-  // Default admin account created with the database. Change the password after your first sign-in.
-  static const adminEmail = 'admin@fittrack.com';
-  static const _adminPassword = 'Admin123!';
-
   Database? _db;
 
   /// Use this everywhere: `final db = await DatabaseHelper.instance.database;`
@@ -42,18 +38,46 @@ class DatabaseHelper {
         for (final statement in schemaStatements) {
           await db.execute(statement);
         }
-        await _seedAdmin(db);
+        await _seedAccounts(db);
       },
     );
   }
 
-  Future<void> _seedAdmin(Database db) async {
+  /// Test accounts, created only when the database file is first created.
+  Future<void> _seedAccounts(Database db) async {
+    // Admin
     await db.insert('users', {
       'role': 'admin',
       'first_name': 'Admin',
       'last_name': 'FitTrack',
-      'email': adminEmail,
-      'password_hash': hashPassword(_adminPassword),
+      'email': 'admin@fittrack.com',
+      'password_hash': hashPassword('Admin123!'),
+    });
+
+    // User: ghaith hajji
+    await db.insert('users', {
+      'role': 'user',
+      'first_name': 'Ghaith',
+      'last_name': 'Hajji',
+      'email': 'hajjighaith7@gmail.com',
+      'phone': '27654690',
+      'password_hash': hashPassword('7399ghaith'),
+      'birth_date': '2003-10-03',
+      'height_cm': 188,
+      'weight_kg': 98,
+    });
+
+    // Coach: khalil ayari (approved, certificate skipped)
+    await db.insert('users', {
+      'role': 'coach',
+      'first_name': 'Khalil',
+      'last_name': 'Ayari',
+      'email': 'cbum@fittrack.com',
+      'password_hash': hashPassword('coach123'),
+      'birth_date': '2000-06-12',
+      'height_cm': 190,
+      'weight_kg': 88,
+      'coach_status': 'approved',
     });
   }
 

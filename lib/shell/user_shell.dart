@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/widgets/sign_out_overlay.dart';
 
 class UserShell extends StatelessWidget {
   final Widget child;
@@ -18,7 +19,7 @@ class UserShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final index = _tabs.indexWhere((t) => location.startsWith(t.$1));
     return Scaffold(
-      body: child,
+      body: SignOutOverlay(child: child),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index < 0 ? 0 : index,
         onDestinationSelected: (i) => context.go(_tabs[i].$1),
