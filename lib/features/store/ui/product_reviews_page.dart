@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/review_models.dart';
 import '../data/store_repository.dart';
@@ -38,7 +38,7 @@ class _ProductReviewsPageState extends ConsumerState<ProductReviewsPage> {
   }
 
   Future<void> _addReview() async {
-    final userId = ref.read(authProvider)?.id;
+    final userId = ref.read(sessionProvider)?.id;
     if (userId == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
