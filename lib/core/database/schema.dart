@@ -301,6 +301,22 @@ const reviewTableStatements = <String>[
   'CREATE INDEX IF NOT EXISTS idx_reviews_user ON product_reviews(user_id)',
 ];
 
+const contactRequestTableStatements = <String>[
+  '''
+  CREATE TABLE IF NOT EXISTS contact_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    buyer_phone TEXT NOT NULL,
+    message TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'contacted', 'closed')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+  ''',
+  'CREATE INDEX IF NOT EXISTS idx_contact_requests_product ON contact_requests(product_id)',
+  'CREATE INDEX IF NOT EXISTS idx_contact_requests_seller ON contact_requests(product_id, status)',
+];
+
 const List<String> coachSchedulingStatements = [
   '''
   CREATE TABLE coach_availability (

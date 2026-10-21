@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/error_logger.dart';
+import 'contact_request_model.dart';
 import 'review_models.dart';
 import 'store_models.dart';
 
@@ -741,18 +742,90 @@ class StoreRepository {
         throw const StoreException('This product is not available.');
       }
       
-      // For now, we just log it. In production, send notification to seller
-      ErrorLogger.instance.logInfo(
-        'Contact request: Product $productId, Buyer $buyerId, Phone: ${buyerPhone.trim()}',
-      );
+      // Store contact request in database
+      await db.insert('contact_requests', {
+        'product_id': productId,
+        'buyer_id': buyerId,
+        'buyer_phone': buyerPhone.trim(),
+        'message': message.trim(),
+        'status': 'pending',
+      });
       
-      // In a real app, you would:
-      // 1. Store in a contact_requests table
-      // 2. Send push notification to seller
-      // 3. Send email to seller
+      ErrorLogger.instance.logSuccess(
+        'Contact request created: Product $productId, Buyer $buyerId',
+      );
       
     } catch (e, stackTrace) {
       ErrorLogger.instance.logError('sendContactRequest', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<List<ContactRequest>> getContactRequestsForSeller(int sellerId) async {
+    try {
+      final db = await _db;
+      
+      final rows = await db.rawQuery('''
+        SELECT 
+          cr.id,
+          cr.product_id,
+          cr.buyer_id,
+          cr.buyer_phone,
+          cr.message,
+          cr.status,
+          cr.created_at,
+          p.title AS product_title,
+          COALESCE(u.first_name || ' ' || u.last_name, 'Buyer') AS buyer_name
+        FROM contact_requests cr
+        JOIN products p ON p.id = cr.product_id
+        LEFT JOIN users u ON u.id = cr.buyer_id
+        WHERE p.seller_id = ? AND p.source = 'community'
+        ORDER BY 
+          CASE cr.status 
+            WHEN 'pending' THEN 1
+            WHEN 'contacted' THEN 2
+            WHEN 'closed' THEN 3
+          END,
+          cr.created_at DESC
+      ''', [sellerId]);
+      
+      return rows.map(ContactRequest.fromMap).toList();
+    } catch (e, stackTrace) {
+      ErrorLogger.instance.logError('getContactRequestsForSeller', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> updateContactRequestStatus(int requestId, String newStatus, int sellerId) async {
+    try {
+      final db = await _db;
+      
+      if (!{'pending', 'contacted', 'closed'}.contains(newStatus)) {
+        throw const StoreException('Invalid status.');
+      }
+      
+      // Verify the request belongs to seller's product
+      final check = await db.rawQuery('''
+        SELECT cr.id
+        FROM contact_requests cr
+        JOIN products p ON p.id = cr.product_id
+        WHERE cr.id = ? AND p.seller_id = ? AND p.source = 'community'
+      ''', [requestId, sellerId]);
+      
+      if (check.isEmpty) {
+        throw const StoreException('Contact request not found.');
+      }
+      
+      await db.update(
+        'contact_requests',
+        {'status': newStatus},
+        where: 'id = ?',
+        whereArgs: [requestId],
+      );
+      
+      ErrorLogger.instance.logSuccess('Contact request $requestId updated to $newStatus');
+    } catch (e, stackTrace) {
+      ErrorLogger.instance.logError('updateContactRequestStatus', e, stackTrace);
       rethrow;
     }
   }

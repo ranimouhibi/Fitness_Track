@@ -98,6 +98,11 @@ class _StorePageState extends ConsumerState<StorePage> {
             ),
           ),
           IconButton(
+            tooltip: 'Contact requests',
+            onPressed: () => context.push('${widget.basePath}/contact-requests'),
+            icon: const Icon(Icons.mail_outline),
+          ),
+          IconButton(
             tooltip: 'My orders',
             onPressed: () => context.push('${widget.basePath}/orders'),
             icon: const Icon(Icons.receipt_long_outlined),
