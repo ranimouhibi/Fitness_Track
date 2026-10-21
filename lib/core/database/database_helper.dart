@@ -12,7 +12,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'fittrack.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   Database? _db;
   DatabaseFactory? _webFactory;
@@ -51,6 +51,17 @@ class DatabaseHelper {
           onUpgrade: (db, oldVersion, newVersion) async {
             if (oldVersion < 2) {
               for (final statement in storeUpgradeV2Statements) {
+                await db.execute(statement);
+              }
+            }
+            if (oldVersion < 3) {
+              for (final statement in wishlistTableStatements) {
+                await db.execute(statement);
+              }
+              for (final statement in reviewTableStatements) {
+                await db.execute(statement);
+              }
+              for (final statement in contactRequestTableStatements) {
                 await db.execute(statement);
               }
             }
@@ -101,6 +112,17 @@ class DatabaseHelper {
           for (final statement in coachingTriggerStatements) {
             await db.execute(statement);
           }
+          for (final statement in wishlistTableStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in reviewTableStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in contactRequestTableStatements) {
+            await db.execute(statement);
+          }
+        }
+        if (oldVersion < 3) {
           for (final statement in wishlistTableStatements) {
             await db.execute(statement);
           }
