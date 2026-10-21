@@ -46,6 +46,15 @@ class DatabaseHelper {
             for (final statement in schemaStatements) {
               await db.execute(statement);
             }
+            for (final statement in wishlistTableStatements) {
+              await db.execute(statement);
+            }
+            for (final statement in reviewTableStatements) {
+              await db.execute(statement);
+            }
+            for (final statement in contactRequestTableStatements) {
+              await db.execute(statement);
+            }
             await _seedAccounts(db);
           },
           onUpgrade: (db, oldVersion, newVersion) async {
