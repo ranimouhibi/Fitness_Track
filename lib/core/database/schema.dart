@@ -272,4 +272,111 @@ const storeUpgradeV2Statements = <String>[
   'ALTER TABLE products ADD COLUMN image_paths TEXT',
   'ALTER TABLE products ADD COLUMN review_note TEXT',
   ...storeOrderTableStatements,
+const List<String> coachSchedulingStatements = [
+  '''
+  CREATE TABLE coach_availability (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coach_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    weekday INTEGER NOT NULL CHECK (weekday BETWEEN 1 AND 7),
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    slot_minutes INTEGER NOT NULL CHECK (slot_minutes > 0),
+    mode TEXT NOT NULL CHECK (mode IN ('online', 'in_person')),
+    price_tnd REAL NOT NULL CHECK (price_tnd >= 0)
+  )
+  ''',
+  '''
+  CREATE TABLE coach_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coach_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    availability_id INTEGER REFERENCES coach_availability(id) ON DELETE SET NULL,
+    starts_at TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK (mode IN ('online', 'in_person')),
+    price_tnd REAL NOT NULL CHECK (price_tnd >= 0),
+    status TEXT NOT NULL DEFAULT 'free'
+      CHECK (status IN ('free', 'pending', 'booked')),
+    UNIQUE (coach_id, starts_at)
+  )
+  ''',
+  'CREATE INDEX idx_coach_slots_coach_start ON coach_slots(coach_id, starts_at, status)',
+  'CREATE INDEX idx_coach_availability_coach_day ON coach_availability(coach_id, weekday)',
+];
+
+const List<String> coachingTriggerStatements = [
+  '''
+  CREATE TRIGGER booking_slot_insert_guard
+  BEFORE INSERT ON bookings
+  WHEN NEW.status = 'pending'
+  BEGIN
+    SELECT CASE WHEN julianday(NEW.starts_at) <= julianday('now', 'localtime')
+      OR NOT EXISTS (
+        SELECT 1 FROM coach_slots
+        WHERE coach_id = NEW.coach_id AND starts_at = NEW.starts_at
+          AND status = 'free' AND mode = NEW.mode AND price_tnd = NEW.price_tnd
+      )
+      THEN RAISE(ABORT, 'Booking slot is unavailable') END;
+  END
+  ''',
+  '''
+  CREATE TRIGGER booking_slot_after_insert
+  AFTER INSERT ON bookings
+  WHEN NEW.status = 'pending'
+  BEGIN
+    UPDATE coach_slots SET status = 'pending'
+    WHERE coach_id = NEW.coach_id AND starts_at = NEW.starts_at AND status = 'free';
+  END
+  ''',
+  '''
+  CREATE TRIGGER booking_slot_update_guard
+  BEFORE UPDATE OF coach_id, starts_at, status ON bookings
+  WHEN NEW.status IN ('pending', 'accepted')
+  BEGIN
+    SELECT CASE WHEN julianday(NEW.starts_at) <= julianday('now', 'localtime')
+      OR NOT EXISTS (
+        SELECT 1 FROM coach_slots
+        WHERE coach_id = NEW.coach_id
+          AND starts_at = NEW.starts_at
+          AND mode = NEW.mode
+          AND price_tnd = NEW.price_tnd
+          AND (
+            status = 'free'
+            OR (coach_id = OLD.coach_id AND starts_at = OLD.starts_at)
+          )
+      )
+      THEN RAISE(ABORT, 'Booking slot is unavailable') END;
+  END
+  ''',
+  '''
+  CREATE TRIGGER booking_slot_after_update
+  AFTER UPDATE OF coach_id, starts_at, status ON bookings
+  BEGIN
+    UPDATE coach_slots SET status = 'free'
+    WHERE coach_id = OLD.coach_id
+      AND starts_at = OLD.starts_at
+      AND (
+        NEW.coach_id != OLD.coach_id
+        OR NEW.starts_at != OLD.starts_at
+        OR NEW.status IN ('cancelled', 'declined', 'ended')
+      );
+    UPDATE coach_slots
+    SET status = CASE NEW.status WHEN 'pending' THEN 'pending' ELSE 'booked' END
+    WHERE coach_id = NEW.coach_id
+      AND starts_at = NEW.starts_at
+      AND NEW.status IN ('pending', 'accepted');
+  END
+  ''',
+];
+
+const List<String> coachSchedulingBackfillStatements = [
+  '''
+  INSERT OR IGNORE INTO coach_slots
+    (coach_id, starts_at, mode, price_tnd, status)
+  SELECT coach_id, starts_at, mode, price_tnd,
+         CASE WHEN MAX(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) = 1
+           THEN 'booked' ELSE 'pending' END
+  FROM bookings
+  WHERE status IN ('pending', 'accepted')
+    AND julianday(starts_at) > julianday('now', 'localtime')
+  GROUP BY coach_id, starts_at
+  ''',
 ];
