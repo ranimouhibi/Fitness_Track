@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common/sqlite_api.dart';
 import 'schema.dart';
 
 class DatabaseHelper {
@@ -13,6 +15,12 @@ class DatabaseHelper {
   static const _dbVersion = 2;
 
   Database? _db;
+  DatabaseFactory? _webFactory;
+
+  /// Initialize web database factory
+  Future<void> initializeWeb(DatabaseFactory factory) async {
+    _webFactory = factory;
+  }
 
   /// Use this everywhere: `final db = await DatabaseHelper.instance.database;`
   Future<Database> get database async {
@@ -26,12 +34,36 @@ class DatabaseHelper {
   }
 
   Future<Database> _open() async {
+    if (kIsWeb && _webFactory != null) {
+      return _webFactory!.openDatabase(
+        _dbName,
+        options: OpenDatabaseOptions(
+          version: _dbVersion,
+          onConfigure: (db) async {
+            await db.execute('PRAGMA foreign_keys = ON');
+          },
+          onCreate: (db, version) async {
+            for (final statement in schemaStatements) {
+              await db.execute(statement);
+            }
+            await _seedAccounts(db);
+          },
+          onUpgrade: (db, oldVersion, newVersion) async {
+            if (oldVersion < 2) {
+              for (final statement in storeUpgradeV2Statements) {
+                await db.execute(statement);
+              }
+            }
+          },
+        ),
+      );
+    }
+    
     final path = join(await getDatabasesPath(), _dbName);
     return openDatabase(
       path,
       version: _dbVersion,
       onConfigure: (db) async {
-        // SQLite ignores foreign keys unless this is switched on.
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
