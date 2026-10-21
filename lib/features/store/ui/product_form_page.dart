@@ -1,11 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../../../core/services/image_service.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/utils/validators.dart';
 import '../data/store_repository.dart';
@@ -27,7 +28,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _price = TextEditingController();
   final _stock = TextEditingController(text: '0');
   final _repository = StoreRepository();
-  final _picker = ImagePicker();
   final List<String> _imagePaths = [];
   String _category = 'training_gear';
   bool _loading = false;
@@ -81,20 +81,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
 
   Future<void> _pickImages() async {
     if (_imagePaths.length >= 3) return;
-    final images = await _picker.pickMultiImage(limit: 3 - _imagePaths.length);
-    if (images.isEmpty) return;
-    final directory = await getApplicationDocumentsDirectory();
-    final imageDirectory = Directory(p.join(directory.path, 'store_product_images'));
-    await imageDirectory.create(recursive: true);
-    final paths = <String>[];
-    for (final image in images.take(3 - _imagePaths.length)) {
-      final destination = p.join(
-        imageDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_${p.basename(image.path)}',
-      );
-      paths.add((await File(image.path).copy(destination)).path);
+    final newPaths = await ImageService.instance.pickImages(limit: 3 - _imagePaths.length);
+    if (mounted && newPaths.isNotEmpty) {
+      setState(() => _imagePaths.addAll(newPaths));
     }
-    if (mounted) setState(() => _imagePaths.addAll(paths));
   }
 
   Future<void> _save() async {
@@ -209,7 +199,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: Image.file(File(path), width: 76, height: 76, fit: BoxFit.cover),
+                                      child: _buildImagePreview(path),
                                     ),
                                     Positioned(
                                       top: 0,
@@ -247,5 +237,26 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                   ),
                 ),
     );
+  }
+
+  Widget _buildImagePreview(String path) {
+    if (path.startsWith('data:image/')) {
+      // Base64 image (web)
+      try {
+        final base64String = path.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return Image.memory(bytes, width: 76, height: 76, fit: BoxFit.cover);
+      } catch (e) {
+        return Container(
+          width: 76,
+          height: 76,
+          color: Colors.grey,
+          child: const Icon(Icons.error),
+        );
+      }
+    } else {
+      // File path (mobile)
+      return Image.file(File(path), width: 76, height: 76, fit: BoxFit.cover);
+    }
   }
 }

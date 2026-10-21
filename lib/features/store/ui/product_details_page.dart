@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../data/review_models.dart';
 import '../data/store_cart.dart';
 import '../data/store_models.dart';
 import '../data/store_repository.dart';
+import 'contact_seller_page.dart';
+import 'product_reviews_page.dart';
 import 'store_widgets.dart';
 
 class ProductDetailsPage extends ConsumerStatefulWidget {
@@ -27,12 +30,14 @@ class ProductDetailsPage extends ConsumerStatefulWidget {
 class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
   final _repository = StoreRepository();
   late Future<StoreProduct?> _product;
+  late Future<ProductRating> _rating;
   int _quantity = 1;
 
   @override
   void initState() {
     super.initState();
     _product = _repository.publicProductById(widget.productId);
+    _rating = _repository.getProductRating(widget.productId);
   }
 
   void _addToCart(StoreProduct product) {
@@ -141,6 +146,8 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                           product.description.isEmpty ? 'No description provided.' : product.description,
                           style: const TextStyle(color: AppColors.textSecondary, height: 1.45),
                         ),
+                        const SizedBox(height: 20),
+                        _buildReviewsSummary(),
                         if (isOfficial && product.isAvailable) ...[
                           const SizedBox(height: 22),
                           Row(
@@ -164,6 +171,32 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                       ],
                     ),
                   ),
+                  if (!isOfficial && widget.allowBuying)
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (context) => Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                                  ),
+                                  child: ContactSellerPage(product: product),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.message_outlined),
+                            label: const Text('Contact seller'),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (isOfficial && widget.allowBuying)
                     SafeArea(
                       top: false,
@@ -214,4 +247,125 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
         side: BorderSide.none,
         visualDensity: VisualDensity.compact,
       );
+
+  Widget _buildReviewsSummary() {
+    return FutureBuilder<ProductRating>(
+      future: _rating,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 60,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final rating = snapshot.data!;
+
+        if (rating.totalReviews == 0) {
+          return Card(
+            elevation: 0,
+            color: AppColors.softBlue,
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ProductReviewsPage(productId: widget.productId),
+                  ),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.rate_review_outlined, color: AppColors.textSecondary),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No reviews yet. Be the first to review!',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Card(
+          elevation: 0,
+          color: AppColors.softBlue,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ProductReviewsPage(productId: widget.productId),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            rating.averageRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.deepBlue,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ...List.generate(5, (index) {
+                            if (index < rating.averageRating.floor()) {
+                              return const Icon(Icons.star, size: 18, color: Colors.amber);
+                            } else if (index < rating.averageRating) {
+                              return const Icon(Icons.star_half, size: 18, color: Colors.amber);
+                            } else {
+                              return const Icon(Icons.star_border, size: 18, color: Colors.amber);
+                            }
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${rating.totalReviews} ${rating.totalReviews == 1 ? 'review' : 'reviews'}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  const Column(
+                    children: [
+                      Text(
+                        'See all reviews',
+                        style: TextStyle(
+                          color: AppColors.deepBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.deepBlue),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

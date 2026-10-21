@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../data/store_cart.dart';
 import '../data/store_models.dart';
 import '../data/store_repository.dart';
+import '../data/wishlist_provider.dart';
 import 'store_widgets.dart';
 
 class StorePage extends ConsumerStatefulWidget {
@@ -70,6 +71,7 @@ class _StorePageState extends ConsumerState<StorePage> {
   @override
   Widget build(BuildContext context) {
     final cartCount = ref.watch(storeCartProvider).values.fold<int>(0, (a, b) => a + b);
+    final wishlistCount = ref.watch(wishlistProvider).length;
     final width = MediaQuery.sizeOf(context).width;
     final maxWidth = width > 900 ? 820.0 : 720.0;
 
@@ -86,6 +88,15 @@ class _StorePageState extends ConsumerState<StorePage> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'My wishlist',
+            onPressed: () => context.push('${widget.basePath}/wishlist'),
+            icon: Badge(
+              isLabelVisible: wishlistCount > 0,
+              label: Text('$wishlistCount'),
+              child: const Icon(Icons.favorite_outline),
+            ),
+          ),
           IconButton(
             tooltip: 'My orders',
             onPressed: () => context.push('${widget.basePath}/orders'),
@@ -255,20 +266,12 @@ class _StorePageState extends ConsumerState<StorePage> {
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final product = products[index];
-                          return StoreProductTile(
+                          return _ProductTileWithWishlist(
                             product: product,
+                            basePath: widget.basePath,
                             onTap: () => _openProduct(product),
-                            action: _community
-                                ? const Icon(Icons.chevron_right)
-                                : FilledButton(
-                                    onPressed: product.isAvailable
-                                        ? () => _addToCart(product)
-                                        : null,
-                                    child: const Text('Add'),
-                                  ),
-                            statusLabel: _community
-                                ? product.condition == 'used' ? 'Used' : 'New'
-                                : null,
+                            onAddToCart: _community ? null : () => _addToCart(product),
+                            showCondition: _community,
                           );
                         },
                       ),
@@ -306,4 +309,86 @@ class _StorePageState extends ConsumerState<StorePage> {
         ),
       );
 
+}
+
+class _ProductTileWithWishlist extends ConsumerStatefulWidget {
+  final StoreProduct product;
+  final String basePath;
+  final VoidCallback onTap;
+  final VoidCallback? onAddToCart;
+  final bool showCondition;
+
+  const _ProductTileWithWishlist({
+    required this.product,
+    required this.basePath,
+    required this.onTap,
+    this.onAddToCart,
+    this.showCondition = false,
+  });
+
+  @override
+  ConsumerState<_ProductTileWithWishlist> createState() => _ProductTileWithWishlistState();
+}
+
+class _ProductTileWithWishlistState extends ConsumerState<_ProductTileWithWishlist> {
+  final _repository = StoreRepository();
+  double? _averageRating;
+  int? _totalReviews;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRating();
+  }
+
+  Future<void> _loadRating() async {
+    try {
+      final rating = await _repository.getProductRating(widget.product.id);
+      if (mounted && rating.totalReviews > 0) {
+        setState(() {
+          _averageRating = rating.averageRating;
+          _totalReviews = rating.totalReviews;
+        });
+      }
+    } catch (_) {
+      // Ignore errors loading rating
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isFavorite = ref.watch(wishlistProvider).contains(widget.product.id);
+    
+    return Stack(
+      children: [
+        StoreProductTile(
+          product: widget.product,
+          onTap: widget.onTap,
+          action: widget.onAddToCart != null
+              ? FilledButton(
+                  onPressed: widget.product.isAvailable ? widget.onAddToCart : null,
+                  child: const Text('Add'),
+                )
+              : const Icon(Icons.chevron_right),
+          statusLabel: widget.showCondition
+              ? (widget.product.condition == 'used' ? 'Used' : 'New')
+              : null,
+          averageRating: _averageRating,
+          totalReviews: _totalReviews,
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton(
+            tooltip: isFavorite ? 'Remove from wishlist' : 'Add to wishlist',
+            onPressed: () => ref.read(wishlistProvider.notifier).toggle(widget.product.id),
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_outline,
+              color: isFavorite ? Colors.red : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

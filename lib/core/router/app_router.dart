@@ -12,6 +12,8 @@ import '../../features/nutrition/ui/nutrition_page.dart';
 import '../../features/nutrition/ui/add_food_page.dart';
 import '../../features/nutrition/ui/pending_foods_page.dart';
 import '../../features/store/routes.dart';
+import '../../features/store/ui/admin_orders_page.dart';
+import '../../features/store/ui/store_stats_page.dart';
 import '../../features/coaching/routes.dart';
 import '../../features/coaching/ui/bookings_page.dart';
 import '../../features/progress/routes.dart';
@@ -63,7 +65,15 @@ final _adminRoutes = <RouteBase>[
     path: '/admin/nutrition/pending-foods',
     builder: (_, __) => const PendingFoodsPage(),
   ),
-  GoRoute(path: '/admin/store', builder: (_, __) => const StorePage()),
+  ...storeRoutesFor('/admin/store', admin: true),
+  GoRoute(
+    path: '/admin/orders',
+    builder: (_, __) => const AdminOrdersPage(),
+  ),
+  GoRoute(
+    path: '/admin/stats',
+    builder: (_, __) => const StoreStatsPage(),
+  ),
   GoRoute(
     path: '/admin/coaches',
     builder: (_, _) => const CoachRequestsPage(),

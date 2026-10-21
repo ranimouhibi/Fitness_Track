@@ -76,11 +76,19 @@ class DatabaseHelper {
         for (final statement in coachingTriggerStatements) {
           await db.execute(statement);
         }
+        for (final statement in wishlistTableStatements) {
+          await db.execute(statement);
+        }
+        for (final statement in reviewTableStatements) {
+          await db.execute(statement);
+        }
         await _seedAccounts(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           for (final statement in storeUpgradeV2Statements) {
+            await db.execute(statement);
+          }
           for (final statement in coachSchedulingStatements) {
             await db.execute(statement);
           }
@@ -88,6 +96,12 @@ class DatabaseHelper {
             await db.execute(statement);
           }
           for (final statement in coachingTriggerStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in wishlistTableStatements) {
+            await db.execute(statement);
+          }
+          for (final statement in reviewTableStatements) {
             await db.execute(statement);
           }
         }

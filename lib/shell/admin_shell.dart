@@ -9,10 +9,12 @@ class AdminShell extends StatelessWidget {
 
   static const _tabs = [
     ('/admin/profile', 'Profile', Icons.person_outline),
-    ('/admin/requests', 'Request', Icons.inbox_outlined),
+    ('/admin/requests', 'Requests', Icons.inbox_outlined),
     ('/admin/training', 'Training', Icons.fitness_center),
     ('/admin/nutrition', 'Nutrition', Icons.apple),
     ('/admin/store', 'Store', Icons.shopping_bag_outlined),
+    ('/admin/orders', 'Orders', Icons.receipt_long_outlined),
+    ('/admin/stats', 'Stats', Icons.bar_chart_outlined),
     ('/admin/coaches', 'Coaches', Icons.groups_outlined),
   ];
 

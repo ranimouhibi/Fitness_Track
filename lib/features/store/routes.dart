@@ -9,6 +9,7 @@ import 'ui/product_form_page.dart';
 import 'ui/sell_item_page.dart';
 import 'ui/store_admin_page.dart';
 import 'ui/store_page.dart';
+import 'ui/wishlist_page.dart';
 
 final storeRoutes = storeRoutesFor('/store');
 
@@ -77,6 +78,10 @@ List<RouteBase> storeRoutesFor(String basePath, {bool admin = false}) => [
         GoRoute(
           path: '$basePath/listings',
           builder: (_, _) => MyListingsPage(basePath: basePath),
+        ),
+        GoRoute(
+          path: '$basePath/wishlist',
+          builder: (_, _) => WishlistPage(basePath: basePath),
         ),
       ],
     ];

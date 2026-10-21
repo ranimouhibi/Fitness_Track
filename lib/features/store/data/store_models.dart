@@ -112,3 +112,31 @@ class StoreOrderItem {
         lineTotalTnd: (row['line_total_tnd'] as num).toDouble(),
       );
 }
+
+class StoreStats {
+  final int totalOfficialProducts;
+  final int totalCommunityProducts;
+  final int totalOrders;
+  final double totalRevenue;
+  final int ordersPlaced;
+  final int ordersProcessing;
+  final int ordersCompleted;
+  final int ordersCancelled;
+  final int lowStockCount;
+  final int outOfStockCount;
+  final int pendingRequests;
+
+  const StoreStats({
+    required this.totalOfficialProducts,
+    required this.totalCommunityProducts,
+    required this.totalOrders,
+    required this.totalRevenue,
+    required this.ordersPlaced,
+    required this.ordersProcessing,
+    required this.ordersCompleted,
+    required this.ordersCancelled,
+    required this.lowStockCount,
+    required this.outOfStockCount,
+    required this.pendingRequests,
+  });
+}

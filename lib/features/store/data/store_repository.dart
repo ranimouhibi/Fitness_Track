@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/error_logger.dart';
+import 'review_models.dart';
 import 'store_models.dart';
 
 class StoreModerationRequest {
@@ -57,16 +59,39 @@ class StoreRepository {
     String search = '',
     String? category,
     String sort = 'name',
+    int limit = 50,
+    int offset = 0,
+    double? minPrice,
+    double? maxPrice,
   }) async {
     final db = await _db;
+    final whereConditions = <String>["source = 'app_store' AND status = 'approved'"];
+    final whereArgs = <Object?>[];
+    
+    if (category != null) {
+      whereConditions.add('category = ?');
+      whereArgs.add(category);
+    }
+    if (search.trim().isNotEmpty) {
+      whereConditions.add('(title LIKE ? OR description LIKE ?)');
+      whereArgs.addAll(['%${search.trim()}%', '%${search.trim()}%']);
+    }
+    if (minPrice != null) {
+      whereConditions.add('price_tnd >= ?');
+      whereArgs.add(minPrice);
+    }
+    if (maxPrice != null) {
+      whereConditions.add('price_tnd <= ?');
+      whereArgs.add(maxPrice);
+    }
+    
     final rows = await db.query(
       'products',
-      where: "source = 'app_store' AND status = 'approved'${category == null ? '' : ' AND category = ?'}${search.trim().isEmpty ? '' : ' AND (title LIKE ? OR description LIKE ?)'}",
-      whereArgs: [
-        ?category,
-        if (search.trim().isNotEmpty) ...['%${search.trim()}%', '%${search.trim()}%'],
-      ],
+      where: whereConditions.join(' AND '),
+      whereArgs: whereArgs,
       orderBy: _sortOrder(sort),
+      limit: limit,
+      offset: offset,
     );
     return rows.map(StoreProduct.fromMap).toList();
   }
@@ -76,6 +101,10 @@ class StoreRepository {
     String? category,
     String? condition,
     String sort = 'newest',
+    int limit = 50,
+    int offset = 0,
+    double? minPrice,
+    double? maxPrice,
   }) async {
     final db = await _db;
     final where = StringBuffer("p.source = 'community' AND p.status = 'approved'");
@@ -92,13 +121,22 @@ class StoreRepository {
       where.write(' AND (p.title LIKE ? OR p.description LIKE ?)');
       args.addAll(['%${search.trim()}%', '%${search.trim()}%']);
     }
+    if (minPrice != null) {
+      where.write(' AND p.price_tnd >= ?');
+      args.add(minPrice);
+    }
+    if (maxPrice != null) {
+      where.write(' AND p.price_tnd <= ?');
+      args.add(maxPrice);
+    }
     final rows = await db.rawQuery('''
       SELECT p.*, COALESCE(u.first_name || ' ' || u.last_name, 'Seller') AS seller_name
       FROM products p
       LEFT JOIN users u ON u.id = p.seller_id
       WHERE $where
       ORDER BY ${_sortOrder(sort, prefix: 'p.')}
-    ''', args);
+      LIMIT ? OFFSET ?
+    ''', [...args, limit, offset]);
     return rows.map(StoreProduct.fromMap).toList();
   }
 
@@ -184,36 +222,62 @@ class StoreRepository {
     required int stock,
     required List<String> imagePaths,
   }) async {
-    final db = await _db;
-    await _requireAdmin(db, adminId);
-    if (title.trim().isEmpty ||
-      !{'training_gear', 'supplement'}.contains(category) ||
-      priceTnd < 0 ||
-      stock < 0) {
-      throw const StoreException('Enter a title, a valid price and a non-negative stock.');
-    }
-    final values = <String, Object?>{
-      'title': title.trim(),
-      'description': description.trim(),
-      'category': category,
-      'condition': 'new',
-      'price_tnd': priceTnd,
-      'stock': stock,
-      'image_paths': imagePaths.join('\n'),
-      'source': 'app_store',
-      'seller_id': adminId,
-      'status': 'approved',
-    };
-    if (id == null) {
-      await db.insert('products', values);
-    } else {
-      final count = await db.update(
-        'products',
-        values,
-        where: "id = ? AND source = 'app_store'",
-        whereArgs: [id],
-      );
-      if (count == 0) throw const StoreException('Product not found.');
+    try {
+      final db = await _db;
+      await _requireAdmin(db, adminId);
+      
+      // Validation stricte
+      final trimmedTitle = title.trim();
+      if (trimmedTitle.isEmpty || trimmedTitle.length < 3) {
+        throw const StoreException('Title must be at least 3 characters.');
+      }
+      if (trimmedTitle.length > 80) {
+        throw const StoreException('Title must not exceed 80 characters.');
+      }
+      if (!{'training_gear', 'supplement'}.contains(category)) {
+        throw const StoreException('Invalid category.');
+      }
+      if (priceTnd < 0 || priceTnd > 999999) {
+        throw const StoreException('Price must be between 0 and 999,999 TND.');
+      }
+      if (stock < 0 || stock > 999999) {
+        throw const StoreException('Stock must be between 0 and 999,999.');
+      }
+      if (description.trim().length > 500) {
+        throw const StoreException('Description must not exceed 500 characters.');
+      }
+      if (imagePaths.length > 3) {
+        throw const StoreException('Maximum 3 images allowed.');
+      }
+      
+      final values = <String, Object?>{
+        'title': trimmedTitle,
+        'description': description.trim(),
+        'category': category,
+        'condition': 'new',
+        'price_tnd': priceTnd,
+        'stock': stock,
+        'image_paths': imagePaths.join('\n'),
+        'source': 'app_store',
+        'seller_id': adminId,
+        'status': 'approved',
+      };
+      if (id == null) {
+        await db.insert('products', values);
+        ErrorLogger.instance.logSuccess('Official product created: $trimmedTitle');
+      } else {
+        final count = await db.update(
+          'products',
+          values,
+          where: "id = ? AND source = 'app_store'",
+          whereArgs: [id],
+        );
+        if (count == 0) throw const StoreException('Product not found.');
+        ErrorLogger.instance.logSuccess('Official product updated: $trimmedTitle');
+      }
+    } catch (e, stackTrace) {
+      ErrorLogger.instance.logError('saveOfficialProduct', e, stackTrace);
+      rethrow;
     }
   }
 
@@ -235,12 +299,40 @@ class StoreRepository {
   }) async {
     final db = await _db;
     await _requireSeller(db, userId);
-    if (title.trim().isEmpty || priceTnd <= 0 || stock <= 0) {
-      throw const StoreException('Enter a title, positive price and available quantity.');
+    
+    // Validation stricte
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty || trimmedTitle.length < 3) {
+      throw const StoreException('Title must be at least 3 characters.');
     }
+    if (trimmedTitle.length > 80) {
+      throw const StoreException('Title must not exceed 80 characters.');
+    }
+    if (!{'training_gear', 'supplement'}.contains(category)) {
+      throw const StoreException('Invalid category.');
+    }
+    if (!{'new', 'used'}.contains(condition)) {
+      throw const StoreException('Invalid condition.');
+    }
+    if (priceTnd <= 0 || priceTnd > 999999) {
+      throw const StoreException('Price must be between 0.01 and 999,999 TND.');
+    }
+    if (stock <= 0 || stock > 999999) {
+      throw const StoreException('Stock must be between 1 and 999,999.');
+    }
+    if (description.trim().length < 10) {
+      throw const StoreException('Description must be at least 10 characters.');
+    }
+    if (description.trim().length > 500) {
+      throw const StoreException('Description must not exceed 500 characters.');
+    }
+    if (imagePaths.length > 3) {
+      throw const StoreException('Maximum 3 images allowed.');
+    }
+    
     await db.transaction((txn) async {
       final productId = await txn.insert('products', {
-        'title': title.trim(),
+        'title': trimmedTitle,
         'description': description.trim(),
         'category': category,
         'condition': condition,
@@ -255,7 +347,7 @@ class StoreRepository {
         'request_type': 'create',
         'target_table': 'products',
         'target_id': productId,
-        'payload': jsonEncode({'title': title.trim()}),
+        'payload': jsonEncode({'title': trimmedTitle}),
         'submitted_by': userId,
         'status': 'pending',
       });
@@ -506,6 +598,34 @@ class StoreRepository {
     return [for (final row in rows) await _orderFromRow(db, row)];
   }
 
+  Future<List<StoreOrder>> allOrders({String? statusFilter}) async {
+    final db = await _db;
+    final where = statusFilter == null ? null : 'status = ?';
+    final whereArgs = statusFilter == null ? null : [statusFilter];
+    final rows = await db.query(
+      'store_orders',
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'id DESC',
+    );
+    return [for (final row in rows) await _orderFromRow(db, row)];
+  }
+
+  Future<void> updateOrderStatus(int orderId, String newStatus, int adminId) async {
+    final db = await _db;
+    await _requireAdmin(db, adminId);
+    if (!{'placed', 'processing', 'completed', 'cancelled'}.contains(newStatus)) {
+      throw const StoreException('Invalid order status.');
+    }
+    final count = await db.update(
+      'store_orders',
+      {'status': newStatus},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+    if (count == 0) throw const StoreException('Order not found.');
+  }
+
   Future<StoreOrder?> orderForUser(int orderId, int userId) async {
     final db = await _db;
     final rows = await db.query(
@@ -533,6 +653,211 @@ class StoreRepository {
         'newest' => '${prefix}id DESC',
         _ => '${prefix}title COLLATE NOCASE ASC',
       };
+
+  Future<StoreStats> getStats() async {
+    final db = await _db;
+    
+    // Count official products
+    final officialResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM products WHERE source = 'app_store'"
+    );
+    final totalOfficialProducts = officialResult.first['count'] as int;
+    
+    // Count community products
+    final communityResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM products WHERE source = 'community' AND status = 'approved'"
+    );
+    final totalCommunityProducts = communityResult.first['count'] as int;
+    
+    // Count orders by status
+    final ordersResult = await db.rawQuery('''
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'placed' THEN 1 ELSE 0 END) as placed,
+        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+        SUM(total_tnd) as revenue
+      FROM store_orders
+    ''');
+    final ordersRow = ordersResult.first;
+    
+    // Low stock count
+    final lowStockResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM products WHERE source = 'app_store' AND stock > 0 AND stock <= 5"
+    );
+    final lowStockCount = lowStockResult.first['count'] as int;
+    
+    // Out of stock count
+    final outOfStockResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM products WHERE source = 'app_store' AND stock = 0"
+    );
+    final outOfStockCount = outOfStockResult.first['count'] as int;
+    
+    // Pending requests
+    final pendingResult = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM content_requests WHERE target_table = 'products' AND status = 'pending'"
+    );
+    final pendingRequests = pendingResult.first['count'] as int;
+    
+    return StoreStats(
+      totalOfficialProducts: totalOfficialProducts,
+      totalCommunityProducts: totalCommunityProducts,
+      totalOrders: ordersRow['total'] as int? ?? 0,
+      totalRevenue: (ordersRow['revenue'] as num?)?.toDouble() ?? 0.0,
+      ordersPlaced: ordersRow['placed'] as int? ?? 0,
+      ordersProcessing: ordersRow['processing'] as int? ?? 0,
+      ordersCompleted: ordersRow['completed'] as int? ?? 0,
+      ordersCancelled: ordersRow['cancelled'] as int? ?? 0,
+      lowStockCount: lowStockCount,
+      outOfStockCount: outOfStockCount,
+      pendingRequests: pendingRequests,
+    );
+  }
+
+  Future<void> sendContactRequest({
+    required int productId,
+    required int buyerId,
+    required String buyerPhone,
+    required String message,
+  }) async {
+    try {
+      final db = await _db;
+      
+      // Validate
+      if (buyerPhone.trim().length < 6) {
+        throw const StoreException('Enter a valid phone number.');
+      }
+      
+      // Check if product exists and is community
+      final products = await db.query(
+        'products',
+        where: "id = ? AND source = 'community' AND status = 'approved'",
+        whereArgs: [productId],
+        limit: 1,
+      );
+      
+      if (products.isEmpty) {
+        throw const StoreException('This product is not available.');
+      }
+      
+      // For now, we just log it. In production, send notification to seller
+      ErrorLogger.instance.logInfo(
+        'Contact request: Product $productId, Buyer $buyerId, Phone: ${buyerPhone.trim()}',
+      );
+      
+      // In a real app, you would:
+      // 1. Store in a contact_requests table
+      // 2. Send push notification to seller
+      // 3. Send email to seller
+      
+    } catch (e, stackTrace) {
+      ErrorLogger.instance.logError('sendContactRequest', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> addReview({
+    required int productId,
+    required int userId,
+    required int rating,
+    required String comment,
+  }) async {
+    try {
+      final db = await _db;
+      
+      // Validate
+      if (rating < 1 || rating > 5) {
+        throw const StoreException('Rating must be between 1 and 5.');
+      }
+      if (comment.trim().length < 10) {
+        throw const StoreException('Review must be at least 10 characters.');
+      }
+      if (comment.trim().length > 500) {
+        throw const StoreException('Review must not exceed 500 characters.');
+      }
+      
+      // Check if product exists
+      final products = await db.query(
+        'products',
+        where: "id = ? AND status = 'approved'",
+        whereArgs: [productId],
+        limit: 1,
+      );
+      
+      if (products.isEmpty) {
+        throw const StoreException('Product not found.');
+      }
+      
+      // Insert or update review
+      await db.insert(
+        'product_reviews',
+        {
+          'product_id': productId,
+          'user_id': userId,
+          'rating': rating,
+          'comment': comment.trim(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      
+      ErrorLogger.instance.logSuccess('Review added for product $productId');
+    } catch (e, stackTrace) {
+      ErrorLogger.instance.logError('addReview', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<List<ProductReview>> getReviews(int productId) async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT r.*, COALESCE(u.first_name || ' ' || u.last_name, 'User') AS user_name
+      FROM product_reviews r
+      LEFT JOIN users u ON u.id = r.user_id
+      WHERE r.product_id = ?
+      ORDER BY r.created_at DESC
+    ''', [productId]);
+    return rows.map(ProductReview.fromMap).toList();
+  }
+
+  Future<ProductRating> getProductRating(int productId) async {
+    final db = await _db;
+    final result = await db.rawQuery('''
+      SELECT 
+        AVG(rating) as avg_rating,
+        COUNT(*) as total,
+        SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as rating_5,
+        SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as rating_4,
+        SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as rating_3,
+        SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as rating_2,
+        SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as rating_1
+      FROM product_reviews
+      WHERE product_id = ?
+    ''', [productId]);
+    
+    final row = result.first;
+    final total = row['total'] as int? ?? 0;
+    
+    if (total == 0) {
+      return const ProductRating(
+        averageRating: 0,
+        totalReviews: 0,
+        ratingCounts: {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+      );
+    }
+    
+    return ProductRating(
+      averageRating: (row['avg_rating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: total,
+      ratingCounts: {
+        5: row['rating_5'] as int? ?? 0,
+        4: row['rating_4'] as int? ?? 0,
+        3: row['rating_3'] as int? ?? 0,
+        2: row['rating_2'] as int? ?? 0,
+        1: row['rating_1'] as int? ?? 0,
+      },
+    );
+  }
 }
 
 class StoreException implements Exception {

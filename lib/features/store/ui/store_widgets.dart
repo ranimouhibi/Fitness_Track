@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -24,13 +27,38 @@ class StoreProductImage extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: path == null
           ? const Icon(Icons.shopping_bag_outlined, color: AppColors.deepBlue)
-          : Image.file(
-              File(path),
-              fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                  const Icon(Icons.image_not_supported_outlined, color: AppColors.deepBlue),
-            ),
+          : _buildImage(path),
     );
+  }
+
+  Widget _buildImage(String path) {
+    if (_isBase64(path)) {
+      // Web: display from base64
+      try {
+        final base64String = path.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.image_not_supported_outlined, color: AppColors.deepBlue),
+        );
+      } catch (e) {
+        return const Icon(Icons.image_not_supported_outlined, color: AppColors.deepBlue);
+      }
+    } else {
+      // Mobile: display from file
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image_not_supported_outlined, color: AppColors.deepBlue),
+      );
+    }
+  }
+
+  bool _isBase64(String path) {
+    return path.startsWith('data:image/');
   }
 }
 
@@ -39,6 +67,8 @@ class StoreProductTile extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? action;
   final String? statusLabel;
+  final double? averageRating;
+  final int? totalReviews;
 
   const StoreProductTile({
     super.key,
@@ -46,6 +76,8 @@ class StoreProductTile extends StatelessWidget {
     this.onTap,
     this.action,
     this.statusLabel,
+    this.averageRating,
+    this.totalReviews,
   });
 
   @override
@@ -86,6 +118,24 @@ class StoreProductTile extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if (averageRating != null && totalReviews != null && totalReviews! > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.star, size: 14, color: Colors.amber),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${averageRating!.toStringAsFixed(1)} ($totalReviews)',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (product.sellerName != null)
                       Text(
                         'By ${product.sellerName}',
