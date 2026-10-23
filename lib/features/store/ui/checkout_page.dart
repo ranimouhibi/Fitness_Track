@@ -70,7 +70,24 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final user = ref.watch(sessionProvider);
     final width = MediaQuery.sizeOf(context).width;
     return Scaffold(
-      appBar: AppBar(title: const Text('Confirm order')),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Confirm Order'),
+          ],
+        ),
+      ),
       body: cart.isEmpty
           ? const StoreMessage(
               icon: Icons.shopping_cart_outlined,
@@ -85,64 +102,188 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      Text('Delivery details', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _name,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(labelText: 'Full name'),
-                        validator: (value) => value == null || value.trim().length < 2
-                            ? 'Enter your full name.'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phone,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(labelText: 'Phone number'),
-                        validator: (value) => value == null || value.trim().length < 6
-                            ? 'Enter a valid phone number.'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _address,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(labelText: 'Delivery address'),
-                        validator: (value) => value == null || value.trim().length < 8
-                            ? 'Enter a complete delivery address.'
-                            : null,
-                      ),
-                      const SizedBox(height: 20),
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.primary, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.softBlue,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.local_shipping, color: AppColors.primary, size: 24),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Delivery Details',
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                              ),
+                              child: TextFormField(
+                                controller: _name,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'Full name',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(16),
+                                  prefixIcon: Icon(Icons.person, color: AppColors.primary),
+                                ),
+                                validator: (value) => value == null || value.trim().length < 2
+                                    ? 'Enter your full name.'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                              ),
+                              child: TextFormField(
+                                controller: _phone,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  labelText: 'Phone number',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(16),
+                                  prefixIcon: Icon(Icons.phone, color: AppColors.primary),
+                                ),
+                                validator: (value) => value == null || value.trim().length < 6
+                                    ? 'Enter a valid phone number.'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                              ),
+                              child: TextFormField(
+                                controller: _address,
+                                minLines: 2,
+                                maxLines: 4,
+                                decoration: const InputDecoration(
+                                  labelText: 'Delivery address',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(16),
+                                  prefixIcon: Icon(Icons.location_on, color: AppColors.primary),
+                                ),
+                                validator: (value) => value == null || value.trim().length < 8
+                                    ? 'Enter a complete delivery address.'
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.softBlue,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                         ),
-                        child: const Text(
-                          'This records an order request. No payment will be processed in the app.',
-                          style: TextStyle(color: AppColors.deepBlue),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'This records an order request. No payment will be processed in the app.',
+                                style: TextStyle(color: AppColors.deepBlue, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (user == null) ...[
                         const SizedBox(height: 12),
-                        const Text('Sign in to place this order.'),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.warning_outlined, color: Colors.red, size: 20),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Sign in to place this order.',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                       if (_error != null) ...[
                         const SizedBox(height: 12),
-                        Text(_error!, style: const TextStyle(color: Colors.red)),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 20),
-                      FilledButton(
+                      FilledButton.icon(
                         onPressed: _submitting ? null : _submit,
-                        child: _submitting
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: _submitting
                             ? const SizedBox.square(
                                 dimension: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text('Place order'),
+                            : const Icon(Icons.check_circle),
+                        label: const Text('Place Order', style: TextStyle(fontSize: 16)),
                       ),
                     ],
                   ),

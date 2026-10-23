@@ -14,16 +14,29 @@ import '../../../core/utils/validators.dart';
 import '../data/store_repository.dart';
 import 'store_widgets.dart';
 
-class SellItemPage extends ConsumerStatefulWidget {
-  final int? productId;
-
-  const SellItemPage({super.key, this.productId});
-
-  @override
-  ConsumerState<SellItemPage> createState() => _SellItemPageState();
+// Function to show the sell item form as a dialog
+Future<bool?> showSellItemDialog(BuildContext context, {int? productId}) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: SellItemDialog(productId: productId),
+    ),
+  );
 }
 
-class _SellItemPageState extends ConsumerState<SellItemPage> {
+class SellItemDialog extends ConsumerStatefulWidget {
+  final int? productId;
+
+  const SellItemDialog({super.key, this.productId});
+
+  @override
+  ConsumerState<SellItemDialog> createState() => _SellItemDialogState();
+}
+
+class _SellItemDialogState extends ConsumerState<SellItemDialog> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
@@ -134,9 +147,9 @@ class _SellItemPageState extends ConsumerState<SellItemPage> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_editing ? 'Edit request sent for review.' : 'Listing sent for admin approval.')),
+        SnackBar(content: Text(_editing ? 'Edit request sent for review' : 'Listing sent for approval')),
       );
-      context.pop(true);
+      Navigator.pop(context, true);
     } on StoreException catch (error) {
       setState(() => _error = error.message);
     } catch (_) {
@@ -150,158 +163,522 @@ class _SellItemPageState extends ConsumerState<SellItemPage> {
   Widget build(BuildContext context) {
     final user = ref.watch(sessionProvider);
     final width = MediaQuery.sizeOf(context).width;
-    return Scaffold(
-      appBar: AppBar(title: Text(_editing ? 'Request listing edit' : 'Sell something')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : user == null
-              ? const Center(child: Text('Sign in to sell an item.'))
-              : Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: width > 760 ? 680 : 620),
-                    child: Form(
-                      key: _formKey,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          if (!_editing)
-                            const Text(
-                              'Reviewed by an admin before appearing in the community store.',
-                              style: TextStyle(color: AppColors.textSecondary),
-                            ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _title,
-                            maxLength: 80,
-                            decoration: const InputDecoration(labelText: 'Title'),
-                            validator: (value) => Validators.requiredText(value ?? '', 'the title'),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _description,
-                            minLines: 3,
-                            maxLines: 5,
-                            maxLength: 500,
-                            decoration: const InputDecoration(labelText: 'Description'),
-                            validator: (value) => (value ?? '').trim().length < 10
-                                ? 'Add at least 10 characters.'
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            initialValue: _category,
-                            decoration: const InputDecoration(labelText: 'Category'),
-                            items: const [
-                              DropdownMenuItem(value: 'training_gear', child: Text('Training gear')),
-                              DropdownMenuItem(value: 'supplement', child: Text('Supplement')),
-                            ],
-                            onChanged: (value) => setState(() => _category = value ?? _category),
-                          ),
-                          const SizedBox(height: 12),
-                          SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(value: 'new', label: Text('New')),
-                              ButtonSegment(value: 'used', label: Text('Used')),
-                            ],
-                            selected: {_condition},
-                            onSelectionChanged: (values) => setState(() => _condition = values.first),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _price,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  decoration: const InputDecoration(labelText: 'Price (TND)'),
-                                  validator: (value) {
-                                    final number = double.tryParse((value ?? '').replaceAll(',', '.'));
-                                    return number == null || number <= 0 ? 'Enter a positive price.' : null;
-                                  },
+    
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: width > 760 ? 700 : 600,
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Modern header with gradient
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2F6BCB), Color(0xFF173B7A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _editing ? Icons.edit_rounded : Icons.sell_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _editing ? 'Edit Listing' : 'Sell Something',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _editing ? 'Request changes to your listing' : 'Submit for admin approval',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Content
+          Flexible(
+            child: _loading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : user == null
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Text('Sign in to sell an item.'),
+                        ),
+                      )
+                    : Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: const EdgeInsets.all(24),
+                          shrinkWrap: true,
+                          children: [
+                            if (!_editing)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.2)),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _quantity,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(labelText: 'Quantity'),
-                                  validator: (value) {
-                                    final number = int.tryParse(value ?? '');
-                                    return number == null || number < 1 ? 'Enter at least 1.' : null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final path in _imagePaths)
-                                Stack(
+                                child: Row(
                                   children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: _buildImagePreview(path),
-                                    ),
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: IconButton.filledTonal(
-                                        tooltip: 'Remove photo',
-                                        onPressed: () => setState(() => _imagePaths.remove(path)),
-                                        icon: const Icon(Icons.close, size: 16),
+                                    Icon(Icons.info_rounded, size: 20, color: Color(0xFF2F6BCB)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Reviewed by an admin before appearing in the store',
+                                        style: TextStyle(fontSize: 13, color: Color(0xFF5A6577)),
                                       ),
                                     ),
                                   ],
                                 ),
-                              if (_imagePaths.length < 3)
-                                OutlinedButton.icon(
-                                  onPressed: _pickImages,
-                                  icon: const Icon(Icons.add_photo_alternate_outlined),
-                                  label: Text('Add photos (${_imagePaths.length}/3)'),
+                              ),
+                            const SizedBox(height: 16),
+                            
+                            // Title
+                            _buildTextField(
+                              controller: _title,
+                              label: 'Title',
+                              icon: Icons.title_rounded,
+                              maxLength: 80,
+                              validator: (value) => Validators.requiredText(value ?? '', 'the title'),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Description
+                            _buildTextField(
+                              controller: _description,
+                              label: 'Description',
+                              icon: Icons.description_rounded,
+                              minLines: 3,
+                              maxLines: 5,
+                              maxLength: 500,
+                              validator: (value) => (value ?? '').trim().length < 10
+                                  ? 'Add at least 10 characters'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Category
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF5F7FA),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.2)),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: DropdownButtonFormField<String>(
+                                value: _category,
+                                decoration: const InputDecoration(
+                                  labelText: 'Category',
+                                  prefixIcon: Icon(Icons.category_rounded),
+                                  border: InputBorder.none,
                                 ),
-                            ],
-                          ),
-                          if (_error != null) ...[
+                                dropdownColor: Colors.white,
+                                items: const [
+                                  DropdownMenuItem(value: 'training_gear', child: Text('Training gear')),
+                                  DropdownMenuItem(value: 'supplement', child: Text('Supplement')),
+                                ],
+                                onChanged: (value) => setState(() => _category = value ?? _category),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Condition
+                            Text(
+                              'Condition',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2F6BCB),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFFF5F7FA), Colors.white],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.3), width: 2),
+                              ),
+                              padding: const EdgeInsets.all(6),
+                              child: SegmentedButton<String>(
+                                style: SegmentedButton.styleFrom(
+                                  selectedBackgroundColor: Color(0xFF2F6BCB),
+                                  selectedForegroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                segments: const [
+                                  ButtonSegment(
+                                    value: 'new',
+                                    label: Text('New', style: TextStyle(fontWeight: FontWeight.w700)),
+                                    icon: Icon(Icons.new_releases_rounded, size: 18),
+                                  ),
+                                  ButtonSegment(
+                                    value: 'used',
+                                    label: Text('Used', style: TextStyle(fontWeight: FontWeight.w700)),
+                                    icon: Icon(Icons.recycling_rounded, size: 18),
+                                  ),
+                                ],
+                                selected: {_condition},
+                                onSelectionChanged: (values) => setState(() => _condition = values.first),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Price and Quantity
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildTextField(
+                                    controller: _price,
+                                    label: 'Price (TND)',
+                                    icon: Icons.attach_money_rounded,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    validator: (value) {
+                                      final number = double.tryParse((value ?? '').replaceAll(',', '.'));
+                                      return number == null || number <= 0 ? 'Enter valid price' : null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildTextField(
+                                    controller: _quantity,
+                                    label: 'Quantity',
+                                    icon: Icons.inventory_rounded,
+                                    keyboardType: TextInputType.number,
+                                    validator: (value) {
+                                      final number = int.tryParse(value ?? '');
+                                      return number == null || number < 1 ? 'At least 1' : null;
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            // Images section
+                            Text(
+                              'Photos (${_imagePaths.length}/3)',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2F6BCB),
+                              ),
+                            ),
                             const SizedBox(height: 12),
-                            Text(_error!, style: const TextStyle(color: Colors.red)),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                for (final path in _imagePaths)
+                                  Stack(
+                                    children: [
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.3), width: 2),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: _buildImagePreview(path),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: -4,
+                                        right: -4,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.2),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: IconButton(
+                                            tooltip: 'Remove photo',
+                                            onPressed: () => setState(() => _imagePaths.remove(path)),
+                                            icon: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                if (_imagePaths.length < 3)
+                                  InkWell(
+                                    onTap: _pickImages,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      width: 90,
+                                      height: 90,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFF5F7FA),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Color(0xFF2F6BCB).withOpacity(0.3),
+                                          width: 2,
+                                          style: BorderStyle.solid,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_photo_alternate_rounded,
+                                            color: Color(0xFF2F6BCB),
+                                            size: 32,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Add Photo',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF2F6BCB),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            
+                            if (_error != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_rounded, color: Colors.red.shade700, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _error!,
+                                        style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 24),
+                            
+                            // Action buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _saving ? null : () => Navigator.pop(context, false),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      side: BorderSide(color: Color(0xFF6B7280), width: 2),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: _saving ? null : _submit,
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      backgroundColor: Color(0xFF2F6BCB),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: _saving
+                                        ? const SizedBox.square(
+                                            dimension: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          )
+                                        : Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                _editing ? Icons.send_rounded : Icons.check_circle_rounded,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                _editing ? 'Send Request' : 'Submit',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
-                          const SizedBox(height: 20),
-                          FilledButton(
-                            onPressed: _saving ? null : _submit,
-                            child: _saving
-                                ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                : Text(_editing ? 'Send edit for approval' : 'Send to admin for approval'),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    int? maxLength,
+    int? minLines,
+    int? maxLines,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.2)),
+      ),
+      child: TextFormField(
+        controller: controller,
+        maxLength: maxLength,
+        minLines: minLines,
+        maxLines: maxLines ?? 1,
+        keyboardType: keyboardType,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Color(0xFF2F6BCB)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          counterText: maxLength != null ? null : '',
+        ),
+      ),
     );
   }
 
   Widget _buildImagePreview(String path) {
     if (path.startsWith('data:image/')) {
-      // Base64 image (web)
       try {
         final base64String = path.split(',')[1];
         final bytes = base64Decode(base64String);
-        return Image.memory(bytes, width: 76, height: 76, fit: BoxFit.cover);
+        return Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover);
       } catch (e) {
         return Container(
-          width: 76,
-          height: 76,
-          color: Colors.grey,
-          child: const Icon(Icons.error),
+          width: 90,
+          height: 90,
+          color: Colors.grey.shade300,
+          child: const Icon(Icons.error, color: Colors.grey),
         );
       }
     } else {
-      // File path (mobile)
-      return Image.file(File(path), width: 76, height: 76, fit: BoxFit.cover);
+      return Image.file(File(path), width: 90, height: 90, fit: BoxFit.cover);
     }
+  }
+}
+
+// Keep the old page for backward compatibility but redirect to dialog
+class SellItemPage extends ConsumerWidget {
+  final int? productId;
+
+  const SellItemPage({super.key, this.productId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Immediately show dialog and pop when done
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showSellItemDialog(context, productId: productId).then((result) {
+        if (context.mounted) {
+          Navigator.pop(context, result);
+        }
+      });
+    });
+    
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
   }
 }

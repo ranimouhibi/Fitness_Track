@@ -15,7 +15,41 @@ class StoreStatsPage extends ConsumerWidget {
     final admin = ref.watch(sessionProvider)?.role == UserRole.admin;
     
     return Scaffold(
-      appBar: AppBar(title: const Text('Store statistics')),
+      backgroundColor: const Color(0xFFF8F9FE),
+      appBar: AppBar(
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2F6BCB), Color(0xFF173B7A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              ),
+              child: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Store Statistics', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('Overview & analytics', style: TextStyle(fontSize: 12, color: Colors.white70)),
+              ],
+            ),
+          ],
+        ),
+      ),
       body: !admin
           ? const StoreMessage(
               icon: Icons.lock_outline,
@@ -38,99 +72,152 @@ class StoreStatsPage extends ConsumerWidget {
                 final stats = snapshot.data!;
                 return Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 820),
+                    constraints: const BoxConstraints(maxWidth: 900),
                     child: ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       children: [
-                        Text(
-                          'Overview',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                        // Key metrics grid
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 1.4,
+                          children: [
+                            _StatCard(
+                              icon: Icons.storefront_rounded,
+                              label: 'Official products',
+                              value: '${stats.totalOfficialProducts}',
+                              color: Color(0xFF2F6BCB),
+                            ),
+                            _StatCard(
+                              icon: Icons.people_rounded,
+                              label: 'Community products',
+                              value: '${stats.totalCommunityProducts}',
+                              color: Color(0xFF5A6577),
+                            ),
+                            _StatCard(
+                              icon: Icons.shopping_cart_rounded,
+                              label: 'Total orders',
+                              value: '${stats.totalOrders}',
+                              color: Color(0xFF173B7A),
+                            ),
+                            _StatCard(
+                              icon: Icons.paid_rounded,
+                              label: 'Total revenue',
+                              value: '${storePrice(stats.totalRevenue)} TND',
+                              color: Color(0xFF6B7280),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        // Orders by status
+                        _SectionHeader(
+                          icon: Icons.list_alt_rounded,
+                          title: 'Orders by status',
+                          color: Color(0xFF2F6BCB),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              _StatusRow(
+                                label: 'Placed',
+                                count: stats.ordersPlaced,
+                                color: Colors.blue,
+                                icon: Icons.shopping_bag_rounded,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(height: 1, thickness: 1),
+                              ),
+                              _StatusRow(
+                                label: 'Processing',
+                                count: stats.ordersProcessing,
+                                color: Colors.blueGrey,
+                                icon: Icons.hourglass_bottom_rounded,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(height: 1, thickness: 1),
+                              ),
+                              _StatusRow(
+                                label: 'Completed',
+                                count: stats.ordersCompleted,
+                                color: Colors.indigo,
+                                icon: Icons.check_circle_rounded,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(height: 1, thickness: 1),
+                              ),
+                              _StatusRow(
+                                label: 'Cancelled',
+                                count: stats.ordersCancelled,
+                                color: Colors.grey,
+                                icon: Icons.cancel_rounded,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        // Stock alerts
+                        _SectionHeader(
+                          icon: Icons.warning_amber_rounded,
+                          title: 'Stock alerts',
+                          color: Color(0xFF5A6577),
                         ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.shopping_bag_outlined,
-                                label: 'Official products',
-                                value: '${stats.totalOfficialProducts}',
-                                color: AppColors.primary,
+                                icon: Icons.inventory_rounded,
+                                label: 'Low stock',
+                                value: '${stats.lowStockCount}',
+                                subtitle: 'Stock ≤ 5',
+                                color: Color(0xFF6B7280),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.people_outline,
-                                label: 'Community products',
-                                value: '${stats.totalCommunityProducts}',
-                                color: Colors.orange,
+                                icon: Icons.remove_circle_rounded,
+                                label: 'Out of stock',
+                                value: '${stats.outOfStockCount}',
+                                subtitle: 'Stock = 0',
+                                color: Color(0xFF9CA3AF),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.receipt_long_outlined,
-                                label: 'Total orders',
-                                value: '${stats.totalOrders}',
-                                color: Colors.green,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.attach_money,
-                                label: 'Total revenue',
-                                value: '${storePrice(stats.totalRevenue)} TND',
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 28),
+                        // Pending reviews
+                        _SectionHeader(
+                          icon: Icons.pending_actions_rounded,
+                          title: 'Pending reviews',
+                          color: Color(0xFF173B7A),
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Orders by status',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatusRow(label: 'Placed', count: stats.ordersPlaced),
-                        _StatusRow(label: 'Processing', count: stats.ordersProcessing),
-                        _StatusRow(label: 'Completed', count: stats.ordersCompleted),
-                        _StatusRow(label: 'Cancelled', count: stats.ordersCancelled),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Stock alerts',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         _StatCard(
-                          icon: Icons.warning_amber_outlined,
-                          label: 'Low stock products',
-                          value: '${stats.lowStockCount}',
-                          subtitle: 'Products with stock ≤ 5',
-                          color: Colors.orange,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatCard(
-                          icon: Icons.inventory_2_outlined,
-                          label: 'Out of stock',
-                          value: '${stats.outOfStockCount}',
-                          color: Colors.red,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Pending reviews',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatCard(
-                          icon: Icons.pending_outlined,
+                          icon: Icons.rate_review_rounded,
                           label: 'Community requests',
                           value: '${stats.pendingRequests}',
-                          color: AppColors.deepBlue,
+                          subtitle: 'Awaiting approval',
+                          color: Color(0xFF2F6BCB),
                         ),
                       ],
                     ),
@@ -138,6 +225,61 @@ class StoreStatsPage extends ConsumerWidget {
                 );
               },
             ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3), width: 2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 20, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -159,48 +301,78 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              if (subtitle != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
                   child: Text(
-                    label,
+                    subtitle!,
                     style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withOpacity(0.8),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -209,23 +381,63 @@ class _StatCard extends StatelessWidget {
 class _StatusRow extends StatelessWidget {
   final String label;
   final int count;
+  final MaterialColor color;
+  final IconData icon;
 
-  const _StatusRow({required this.label, required this.count});
+  const _StatusRow({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(
-            '$count',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.shade400, color.shade600],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: Icon(icon, size: 22, color: Colors.white),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.shade50, color.shade100],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.shade200, width: 2),
+          ),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              color: color.shade800,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

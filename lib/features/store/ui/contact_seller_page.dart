@@ -68,31 +68,82 @@ class _ContactSellerPageState extends ConsumerState<ContactSellerPage> {
 
     if (_sent) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Contact seller')),
+        appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.deepBlue],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.mail, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Contact Seller'),
+            ],
+          ),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle, size: 64, color: Colors.green),
-                const SizedBox(height: 16),
-                const Text(
-                  'Message sent!',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'The seller has received your contact information and will reach out to you.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('Done'),
-                ),
-              ],
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle, size: 64, color: Color(0xFF059669)),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Message Sent!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'The seller has received your contact information and will reach out to you.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => context.pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Done', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -100,7 +151,24 @@ class _ContactSellerPageState extends ConsumerState<ContactSellerPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Contact seller')),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.mail, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Contact Seller'),
+          ],
+        ),
+      ),
       body: user == null
           ? Center(
               child: Padding(
@@ -123,81 +191,168 @@ class _ContactSellerPageState extends ConsumerState<ContactSellerPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      Card(
-                        color: AppColors.softBlue,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.sell_outlined, color: AppColors.deepBlue),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.product.title,
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.primary, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.inventory_2, color: AppColors.primary, size: 28),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.product.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
-                                    Text(
-                                      'Seller: ${widget.product.sellerName ?? "Unknown"}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.person, size: 14, color: AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Seller: ${widget.product.sellerName ?? "Unknown"}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.primary, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.phone, color: AppColors.primary),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Your Contact Information',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                              ),
+                              child: TextFormField(
+                                controller: _phone,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  labelText: 'Your phone number',
+                                  helperText: 'The seller will contact you on this number',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(16),
+                                  prefixIcon: Icon(Icons.phone_android, color: AppColors.primary),
+                                ),
+                                validator: (value) =>
+                                    value == null || value.trim().length < 6
+                                        ? 'Enter a valid phone number.'
+                                        : null,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Row(
+                              children: [
+                                Icon(Icons.message, color: AppColors.primary),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Message (optional)',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                              ),
+                              child: TextFormField(
+                                controller: _message,
+                                minLines: 3,
+                                maxLines: 5,
+                                maxLength: 300,
+                                decoration: const InputDecoration(
+                                  hintText: 'Ask about availability, condition, delivery, etc.',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(16),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Your contact information',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phone,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Your phone number',
-                          helperText: 'The seller will contact you on this number',
-                        ),
-                        validator: (value) =>
-                            value == null || value.trim().length < 6
-                                ? 'Enter a valid phone number.'
-                                : null,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Message (optional)',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _message,
-                        minLines: 3,
-                        maxLines: 5,
-                        maxLength: 300,
-                        decoration: const InputDecoration(
-                          hintText: 'Ask about availability, condition, delivery, etc.',
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.softBlue,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
-                            const SizedBox(width: 8),
+                            const Icon(Icons.info_outline, size: 20, color: AppColors.primary),
+                            const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
+                              child: const Text(
                                 'The seller will receive your phone number and message to contact you directly.',
-                                style: TextStyle(fontSize: 13, color: Colors.blue.shade900),
+                                style: TextStyle(fontSize: 13, color: AppColors.deepBlue),
                               ),
                             ),
                           ],
@@ -205,17 +360,41 @@ class _ContactSellerPageState extends ConsumerState<ContactSellerPage> {
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
-                        Text(_error!, style: const TextStyle(color: Colors.red)),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 20),
-                      FilledButton(
+                      FilledButton.icon(
                         onPressed: _sending ? null : _send,
-                        child: _sending
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: _sending
                             ? const SizedBox.square(
                                 dimension: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text('Send contact request'),
+                            : const Icon(Icons.send),
+                        label: const Text('Send Contact Request', style: TextStyle(fontSize: 16)),
                       ),
                     ],
                   ),

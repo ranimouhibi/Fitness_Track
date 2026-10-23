@@ -81,12 +81,34 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contact requests'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.mail, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Contact Requests'),
+          ],
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              tooltip: 'Refresh',
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh, color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -148,41 +170,61 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
   }
 
   Widget _buildSectionHeader(String title, int count, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              title == 'Pending' ? Icons.schedule :
+              title == 'Contacted' ? Icons.phone_in_talk :
+              Icons.check_circle,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '$title ($count)',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: color,
+          const SizedBox(width: 12),
+          Text(
+            '$title ($count)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildRequestCard(ContactRequest request) {
-    return Card(
+    final statusColor = _statusColor(request.status);
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: request.isPending 
-              ? Colors.orange.shade200 
-              : AppColors.border,
-          width: request.isPending ? 2 : 1,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: request.isPending ? statusColor : AppColors.primary,
+          width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -192,12 +234,20 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
             // Header
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: _statusColor(request.status),
-                  child: Icon(
-                    _statusIcon(request.status),
-                    color: AppColors.white,
-                    size: 20,
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: statusColor, width: 2),
+                  ),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    child: Icon(
+                      _statusIcon(request.status),
+                      color: statusColor,
+                      size: 22,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -208,7 +258,7 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
                       Text(
                         request.buyerName,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
@@ -222,16 +272,21 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
                     ],
                   ),
                 ),
-                Chip(
-                  label: Text(_statusLabel(request.status)),
-                  backgroundColor: _statusColor(request.status).withOpacity(0.1),
-                  labelStyle: TextStyle(
-                    color: _statusColor(request.status),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor, width: 1),
                   ),
-                  side: BorderSide.none,
-                  visualDensity: VisualDensity.compact,
+                  child: Text(
+                    _statusLabel(request.status),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -243,17 +298,18 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
               decoration: BoxDecoration(
                 color: AppColors.softBlue,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.sell_outlined, size: 20, color: AppColors.deepBlue),
+                  const Icon(Icons.inventory_2, size: 20, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       request.productTitle,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.deepBlue,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -263,25 +319,38 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
             const SizedBox(height: 16),
             
             // Phone number
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 18, color: AppColors.textSecondary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SelectableText(
-                    request.buyerPhone,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.softBlue.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone, size: 20, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SelectableText(
+                      request.buyerPhone,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Copy phone number',
-                  onPressed: () => _copyPhone(request.buyerPhone),
-                  icon: const Icon(Icons.copy, size: 18),
-                ),
-              ],
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.softBlue,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: IconButton(
+                      tooltip: 'Copy phone number',
+                      onPressed: () => _copyPhone(request.buyerPhone),
+                      icon: const Icon(Icons.copy, size: 18, color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
             ),
             
             // Message
@@ -290,25 +359,31 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.softBlue.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Message:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                    const Row(
+                      children: [
+                        Icon(Icons.message, size: 16, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Text(
+                          'Message:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       request.message,
-                      style: const TextStyle(height: 1.4),
+                      style: const TextStyle(height: 1.5),
                     ),
                   ],
                 ),
@@ -324,6 +399,11 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _updateStatus(request, 'closed'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red, width: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                         icon: const Icon(Icons.close, size: 18),
                         label: const Text('Close'),
                       ),
@@ -333,6 +413,10 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
                       flex: 2,
                       child: FilledButton.icon(
                         onPressed: () => _updateStatus(request, 'contacted'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                         icon: const Icon(Icons.phone_in_talk, size: 18),
                         label: const Text('Mark as contacted'),
                       ),
@@ -342,6 +426,10 @@ class _SellerContactRequestsPageState extends ConsumerState<SellerContactRequest
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: () => _updateStatus(request, 'closed'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                         icon: const Icon(Icons.check, size: 18),
                         label: const Text('Close request'),
                       ),

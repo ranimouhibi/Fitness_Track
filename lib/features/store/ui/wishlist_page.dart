@@ -56,9 +56,44 @@ class _WishlistPageState extends ConsumerState<WishlistPage> {
   Widget build(BuildContext context) {
     ref.listen(wishlistProvider, (_, __) => _reload());
     final width = MediaQuery.sizeOf(context).width;
+    final wishlistCount = ref.watch(wishlistProvider).length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My wishlist')),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.white),
+            const SizedBox(width: 8),
+            const Text('My Wishlist'),
+            const SizedBox(width: 8),
+            if (wishlistCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$wishlistCount',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
       body: FutureBuilder<List<StoreProduct>>(
         future: _products,
         builder: (context, snapshot) {
@@ -90,24 +125,51 @@ class _WishlistPageState extends ConsumerState<WishlistPage> {
                 itemBuilder: (context, index) {
                   final product = products[index];
                   final isOfficial = product.source == 'app_store';
-                  return StoreProductTile(
-                    product: product,
-                    onTap: () => context.push('${widget.basePath}/product/${product.id}'),
-                    action: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isOfficial && product.isAvailable)
-                          IconButton(
-                            tooltip: 'Add to cart',
-                            onPressed: () => _addToCart(product),
-                            icon: const Icon(Icons.add_shopping_cart_outlined),
-                          ),
-                        IconButton(
-                          tooltip: 'Remove from wishlist',
-                          onPressed: () => ref.read(wishlistProvider.notifier).toggle(product.id),
-                          icon: const Icon(Icons.favorite, color: Colors.red),
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primary, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: StoreProductTile(
+                      product: product,
+                      onTap: () => context.push('${widget.basePath}/product/${product.id}'),
+                      action: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isOfficial && product.isAvailable)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                tooltip: 'Add to cart',
+                                onPressed: () => _addToCart(product),
+                                icon: const Icon(Icons.add_shopping_cart, color: AppColors.primary),
+                              ),
+                            ),
+                          const SizedBox(width: 4),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: IconButton(
+                              tooltip: 'Remove from wishlist',
+                              onPressed: () => ref.read(wishlistProvider.notifier).toggle(product.id),
+                              icon: const Icon(Icons.favorite, color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },

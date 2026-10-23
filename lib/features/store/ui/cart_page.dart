@@ -40,8 +40,44 @@ class _CartPageState extends ConsumerState<CartPage> {
   Widget build(BuildContext context) {
     final cart = ref.watch(storeCartProvider);
     final width = MediaQuery.sizeOf(context).width;
+    final itemCount = cart.values.fold<int>(0, (sum, qty) => sum + qty);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Cart')),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.shopping_cart, color: Colors.white),
+            const SizedBox(width: 8),
+            const Text('Cart'),
+            const SizedBox(width: 8),
+            if (itemCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$itemCount',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
       body: FutureBuilder<List<StoreProduct>>(
         future: _products,
         builder: (context, snapshot) {
@@ -80,46 +116,92 @@ class _CartPageState extends ConsumerState<CartPage> {
                       itemBuilder: (context, index) {
                         final product = products[index];
                         final quantity = cart[product.id] ?? 0;
-                        return StoreProductTile(
-                          product: product,
-                          statusLabel: 'Line total: ${storePrice(product.priceTnd * quantity)} TND',
-                          action: Column(
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Decrease quantity',
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: () {
-                                      ref.read(storeCartProvider.notifier).setQuantity(product, quantity - 1);
-                                      setState(_reloadProducts);
-                                    },
-                                    icon: const Icon(Icons.remove_circle_outline),
-                                  ),
-                                  Text('$quantity'),
-                                  IconButton(
-                                    tooltip: 'Increase quantity',
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: quantity < product.stock
-                                        ? () {
-                                            ref.read(storeCartProvider.notifier).setQuantity(product, quantity + 1);
-                                            setState(_reloadProducts);
-                                          }
-                                        : null,
-                                    icon: const Icon(Icons.add_circle_outline),
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                tooltip: 'Remove item',
-                                onPressed: () {
-                                  ref.read(storeCartProvider.notifier).remove(product.id);
-                                  setState(_reloadProducts);
-                                },
-                                icon: const Icon(Icons.delete_outline, color: AppColors.textSecondary),
+                        final lineTotal = product.priceTnd * quantity;
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
+                          ),
+                          child: StoreProductTile(
+                            product: product,
+                            statusLabel: 'Line total: ${storePrice(lineTotal)} TND',
+                            action: Column(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.softBlue,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.primary, width: 1),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Decrease quantity',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () {
+                                          ref.read(storeCartProvider.notifier).setQuantity(product, quantity - 1);
+                                          setState(_reloadProducts);
+                                        },
+                                        icon: const Icon(Icons.remove_circle, color: AppColors.primary),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '$quantity',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Increase quantity',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: quantity < product.stock
+                                            ? () {
+                                                ref.read(storeCartProvider.notifier).setQuantity(product, quantity + 1);
+                                                setState(_reloadProducts);
+                                              }
+                                            : null,
+                                        icon: Icon(
+                                          Icons.add_circle,
+                                          color: quantity < product.stock ? AppColors.primary : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    tooltip: 'Remove item',
+                                    onPressed: () {
+                                      ref.read(storeCartProvider.notifier).remove(product.id);
+                                      setState(_reloadProducts);
+                                    },
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -127,20 +209,56 @@ class _CartPageState extends ConsumerState<CartPage> {
                   ),
                   SafeArea(
                     top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.primary, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            'Subtotal  ${storePrice(total)} TND',
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Subtotal',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                '${storePrice(total)} TND',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 10),
-                          FilledButton(
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
                             onPressed: () => context.push('${widget.basePath}/checkout'),
-                            child: const Text('Continue to order'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text('Continue to Order', style: TextStyle(fontSize: 16)),
                           ),
                         ],
                       ),

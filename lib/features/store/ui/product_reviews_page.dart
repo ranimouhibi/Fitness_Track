@@ -65,12 +65,34 @@ class _ProductReviewsPageState extends ConsumerState<ProductReviewsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reviews & Ratings'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.reviews, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Reviews & Ratings'),
+          ],
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Write a review',
-            onPressed: _addReview,
-            icon: const Icon(Icons.rate_review_outlined),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              tooltip: 'Write a review',
+              onPressed: _addReview,
+              icon: const Icon(Icons.rate_review, color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -123,12 +145,25 @@ class _ProductReviewsPageState extends ConsumerState<ProductReviewsPage> {
                         message: 'Be the first to review this product.',
                       ),
                     ] else ...[
-                      const Text(
-                        'Customer Reviews',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.softBlue,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.forum, color: AppColors.primary, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Customer Reviews',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       ...reviews.map((review) => _ReviewCard(review: review)),
@@ -142,66 +177,84 @@ class _ProductReviewsPageState extends ConsumerState<ProductReviewsPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addReview,
-        icon: const Icon(Icons.edit_outlined),
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.edit),
         label: const Text('Write Review'),
       ),
     );
   }
 
   Widget _buildRatingSummary(ProductRating rating) {
-    return Card(
-      elevation: 0,
-      color: AppColors.softBlue,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.softBlue,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
                         rating.averageRating.toStringAsFixed(1),
                         style: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.deepBlue,
+                          fontSize: 56,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       _buildStars(rating.averageRating),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         '${rating.totalReviews} ${rating.totalReviews == 1 ? 'review' : 'reviews'}',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      for (int i = 5; i >= 1; i--)
-                        _buildRatingBar(
-                          i,
-                          rating.ratingCounts[i] ?? 0,
-                          rating.totalReviews,
-                        ),
-                    ],
-                  ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    for (int i = 5; i >= 1; i--)
+                      _buildRatingBar(
+                        i,
+                        rating.ratingCounts[i] ?? 0,
+                        rating.totalReviews,
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -266,13 +319,19 @@ class _ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: AppColors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -281,13 +340,24 @@ class _ReviewCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.deepBlue,
-                  child: Text(
-                    review.userName.isNotEmpty
-                        ? review.userName[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(color: AppColors.white),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primary, width: 2),
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.softBlue,
+                    child: Text(
+                      review.userName.isNotEmpty
+                          ? review.userName[0].toUpperCase()
+                          : 'U',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -298,7 +368,7 @@ class _ReviewCard extends StatelessWidget {
                       Text(
                         review.userName,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           fontSize: 15,
                         ),
                       ),
@@ -313,26 +383,44 @@ class _ReviewCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.star, size: 16, color: Colors.amber),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${review.rating}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.softBlue,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 16, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${review.rating}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
             if (review.comment.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(
-                review.comment,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  height: 1.4,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.softBlue.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  review.comment,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],

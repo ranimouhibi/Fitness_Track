@@ -6,6 +6,7 @@ import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/store_models.dart';
 import '../data/store_repository.dart';
+import 'product_form_page.dart';
 import 'store_widgets.dart';
 
 class StoreAdminPage extends ConsumerStatefulWidget {
@@ -142,10 +143,61 @@ class _StoreAdminPageState extends ConsumerState<StoreAdminPage> {
     final admin = ref.watch(sessionProvider)?.role == UserRole.admin;
     final width = MediaQuery.sizeOf(context).width;
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
-        title: const Text('Store admin'),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF5A6577), Color(0xFF6B7280)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              ),
+              child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Store Admin', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('Product & review management', style: TextStyle(fontSize: 12, color: Colors.white70)),
+              ],
+            ),
+          ],
+        ),
         actions: [
-          IconButton(tooltip: 'Refresh', onPressed: _reload, icon: const Icon(Icons.refresh)),
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              tooltip: 'Refresh',
+              onPressed: _reload,
+              icon: const Icon(Icons.refresh_rounded, color: Color(0xFF5A6577), size: 22),
+            ),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: !admin
@@ -156,61 +208,163 @@ class _StoreAdminPageState extends ConsumerState<StoreAdminPage> {
             )
           : Center(
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: width > 900 ? 820 : 720),
+                constraints: BoxConstraints(maxWidth: width > 900 ? 900 : 720),
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          SegmentedButton<int>(
-                            segments: const [
-                              ButtonSegment(value: 0, label: Text('App store')),
-                              ButtonSegment(value: 1, label: Text('Community review')),
-                            ],
-                            selected: {_tab},
-                            onSelectionChanged: (value) => setState(() => _tab = value.first),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFF5F7FA), Colors.white],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.3), width: 2),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: SegmentedButton<int>(
+                              style: SegmentedButton.styleFrom(
+                                selectedBackgroundColor: Color(0xFF2F6BCB),
+                                selectedForegroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              ),
+                              segments: const [
+                                ButtonSegment(
+                                  value: 0,
+                                  label: Text('Official Store', style: TextStyle(fontWeight: FontWeight.w700)),
+                                  icon: Icon(Icons.storefront_rounded, size: 20),
+                                ),
+                                ButtonSegment(
+                                  value: 1,
+                                  label: Text('Community', style: TextStyle(fontWeight: FontWeight.w700)),
+                                  icon: Icon(Icons.people_rounded, size: 20),
+                                ),
+                              ],
+                              selected: {_tab},
+                              onSelectionChanged: (value) => setState(() => _tab = value.first),
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _search,
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: (_) => _reload(),
-                            decoration: InputDecoration(
-                              hintText: _tab == 0 ? 'Search official products' : 'Search requests',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: IconButton(
-                                tooltip: 'Clear search',
-                                onPressed: () {
-                                  _search.clear();
-                                  _reload();
-                                },
-                                icon: const Icon(Icons.close),
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Color(0xFF2F6BCB).withOpacity(0.2), width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF2F6BCB).withOpacity(0.1),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: _search,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) => _reload(),
+                              decoration: InputDecoration(
+                                hintText: _tab == 0 ? 'Search official products' : 'Search requests',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _search.text.isNotEmpty
+                                    ? IconButton(
+                                        tooltip: 'Clear search',
+                                        onPressed: () {
+                                          _search.clear();
+                                          _reload();
+                                        },
+                                        icon: const Icon(Icons.close),
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               ),
                             ),
                           ),
                           if (_tab == 0) ...[
-                            const SizedBox(height: 8),
-                            DropdownButtonFormField<String?>(
-                              initialValue: _category,
-                              decoration: const InputDecoration(labelText: 'Category'),
-                              items: const [
-                                DropdownMenuItem<String?>(value: null, child: Text('All categories')),
-                                DropdownMenuItem<String?>(value: 'training_gear', child: Text('Training gear')),
-                                DropdownMenuItem<String?>(value: 'supplement', child: Text('Supplement')),
-                              ],
-                              onChanged: (value) {
-                                _category = value;
-                                _reload();
-                              },
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.softBlue.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                              ),
+                              child: DropdownButtonFormField<String?>(
+                                value: _category,
+                                decoration: const InputDecoration(
+                                  labelText: 'Category',
+                                  prefixIcon: Icon(Icons.category_outlined),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                ),
+                                dropdownColor: Colors.white,
+                                items: const [
+                                  DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.list_alt, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('All categories'),
+                                      ],
+                                    ),
+                                  ),
+                                  DropdownMenuItem<String?>(
+                                    value: 'training_gear',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.fitness_center, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Training gear'),
+                                      ],
+                                    ),
+                                  ),
+                                  DropdownMenuItem<String?>(
+                                    value: 'supplement',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.local_drink, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Supplement'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() => _category = value);
+                                  _reload();
+                                },
+                              ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
-                                onPressed: () => context.push('/admin/store/product/new').then((_) => _reload()),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add product'),
+                                onPressed: () {
+                                  showProductFormDialog(context).then((result) {
+                                    if (result == true) _reload();
+                                  });
+                                },
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  backgroundColor: Color(0xFF2F6BCB),
+                                ),
+                                icon: const Icon(Icons.add_circle_outline),
+                                label: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.w600)),
                               ),
                             ),
                           ],
@@ -251,27 +405,155 @@ class _StoreAdminPageState extends ConsumerState<StoreAdminPage> {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             itemCount: products.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final product = products[index];
-              return StoreProductTile(
-                product: product,
-                onTap: () => context.push('/admin/store/product/${product.id}'),
-                statusLabel: product.stock > 0 ? 'Official · in stock' : 'Official · out of stock',
-                action: PopupMenuButton<String>(
-                  tooltip: 'Product actions',
-                  onSelected: (action) {
-                    if (action == 'edit') {
-                      context.push('/admin/store/product/${product.id}/edit').then((_) => _reload());
-                    } else if (action == 'delete') {
-                      _deleteProduct(product);
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+              final inStock = product.stock > 0;
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white,
+                      inStock ? Colors.green.withOpacity(0.05) : Colors.red.withOpacity(0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: inStock ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (inStock ? Colors.green : Colors.red).withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
                   ],
-                  child: const Icon(Icons.more_vert),
+                ),
+                child: InkWell(
+                  onTap: () => context.push('/admin/store/product/${product.id}'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.verified, size: 14, color: AppColors.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Official',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: inStock ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: inStock ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          inStock ? Icons.check_circle : Icons.cancel,
+                                          size: 14,
+                                          color: inStock ? Colors.green.shade700 : Colors.red.shade700,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          inStock ? 'In stock' : 'Out of stock',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: inStock ? Colors.green.shade700 : Colors.red.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              StoreProductTile(
+                                product: product,
+                                onTap: () => context.push('/admin/store/product/${product.id}'),
+                                statusLabel: '',
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          tooltip: 'Product actions',
+                          onSelected: (action) {
+                            if (action == 'edit') {
+                              showProductFormDialog(context, productId: product.id).then((result) {
+                                if (result == true) _reload();
+                              });
+                            } else if (action == 'delete') {
+                              _deleteProduct(product);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Delete', style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.softBlue,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.more_vert, color: AppColors.deepBlue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -308,48 +590,138 @@ class _StoreAdminPageState extends ConsumerState<StoreAdminPage> {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             itemCount: requests.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final request = requests[index];
-              return Card(
-                margin: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: AppColors.border),
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.white, AppColors.softBlue.withOpacity(0.3)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Request type badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.primary.withOpacity(0.15), AppColors.primary.withOpacity(0.08)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getRequestIcon(request.requestType),
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _requestAction(request.requestType),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '· ${request.product.condition}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Product tile
                       StoreProductTile(
                         product: request.product,
-                        statusLabel: '${_requestAction(request.requestType)} · ${request.product.condition}',
+                        statusLabel: '',
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
-                        child: Text('Submitted by ${request.submitterName}'),
-                      ),
-                      if (request.payload['description'] case final String description when description.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Text(description, maxLines: 3, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 12),
+                      // Submitter info
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border.withOpacity(0.5)),
                         ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Submitted by ${request.submitterName}',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (request.payload['description'] case final String description when description.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            description,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      // Action buttons
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _reviewRequest(request, false),
-                              icon: const Icon(Icons.close),
-                              label: const Text('Decline'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red.shade700,
+                                side: BorderSide(color: Colors.red.shade700),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.close, size: 18),
+                              label: const Text('Decline', style: TextStyle(fontWeight: FontWeight.w600)),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: FilledButton.icon(
                               onPressed: () => _reviewRequest(request, true),
-                              icon: const Icon(Icons.check),
-                              label: const Text('Approve'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.green.shade600,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.check_circle, size: 18),
+                              label: const Text('Approve', style: TextStyle(fontWeight: FontWeight.w600)),
                             ),
                           ),
                         ],
@@ -369,4 +741,11 @@ String _requestAction(String type) => switch (type) {
       'edit' => 'Edit request',
       'delete' => 'Removal request',
       _ => type,
+    };
+
+IconData _getRequestIcon(String type) => switch (type) {
+      'create' => Icons.add_circle_outline,
+      'edit' => Icons.edit_outlined,
+      'delete' => Icons.delete_outline,
+      _ => Icons.help_outline,
     };

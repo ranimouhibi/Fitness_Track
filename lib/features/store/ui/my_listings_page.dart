@@ -93,7 +93,24 @@ class _MyListingsPageState extends ConsumerState<MyListingsPage> {
     final user = ref.watch(sessionProvider);
     final width = MediaQuery.sizeOf(context).width;
     return Scaffold(
-      appBar: AppBar(title: const Text('My listings')),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.deepBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.inventory_2, color: Colors.white),
+            SizedBox(width: 8),
+            Text('My Listings'),
+          ],
+        ),
+      ),
       body: user == null
           ? const StoreMessage(
               icon: Icons.person_outline,
@@ -136,43 +153,108 @@ class _MyListingsPageState extends ConsumerState<MyListingsPage> {
                           product.pendingRequestType != 'create';
                         final canChange = !hasPendingChange &&
                           (product.status == 'approved' || product.status == 'refused');
-                        return Card(
-                          margin: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: const BorderSide(color: AppColors.border),
+                        final statusColor = _getListingStatusColor(product);
+                        
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(12),
                             child: Column(
                               children: [
-                                StoreProductTile(
-                                  product: product,
-                                  statusLabel: status,
-                                  onTap: () => context.push('${widget.basePath}/product/${product.id}'),
-                                  action: canChange
-                                      ? IconButton(
-                                          tooltip: 'Request edit',
-                                          onPressed: () => context.push('${widget.basePath}/sell/${product.id}').then((_) => _reload()),
-                                          icon: const Icon(Icons.edit_outlined),
-                                        )
-                                      : pendingCreation
-                                          ? IconButton(
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: StoreProductTile(
+                                        product: product,
+                                        statusLabel: '',
+                                        onTap: () => context.push('${widget.basePath}/product/${product.id}'),
+                                        action: const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: statusColor, width: 1),
+                                      ),
+                                      child: Text(
+                                        status,
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (canChange)
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: AppColors.softBlue,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: IconButton(
+                                              tooltip: 'Request edit',
+                                              onPressed: () => context.push('${widget.basePath}/sell/${product.id}').then((_) => _reload()),
+                                              icon: const Icon(Icons.edit, color: AppColors.primary),
+                                            ),
+                                          ),
+                                        if (pendingCreation)
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFEF2F2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: IconButton(
                                               tooltip: 'Cancel pending listing',
                                               onPressed: () => _cancel(product),
-                                              icon: const Icon(Icons.close),
-                                            )
-                                          : null,
+                                              icon: const Icon(Icons.close, color: Colors.red),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                                 if (product.reviewNote != null && product.reviewNote!.isNotEmpty)
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                                      child: Text(
-                                        'Admin note: ${product.reviewNote}',
-                                        style: const TextStyle(color: AppColors.textSecondary),
-                                      ),
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF2F2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.info_outline, color: Colors.red, size: 16),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Admin note: ${product.reviewNote}',
+                                            style: const TextStyle(color: Colors.red, fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 if (canChange)
@@ -180,7 +262,10 @@ class _MyListingsPageState extends ConsumerState<MyListingsPage> {
                                     alignment: Alignment.centerRight,
                                     child: TextButton.icon(
                                       onPressed: () => _requestRemoval(product),
-                                      icon: const Icon(Icons.delete_outline),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      icon: const Icon(Icons.delete_outline, size: 18),
                                       label: const Text('Request removal'),
                                     ),
                                   ),
@@ -206,5 +291,15 @@ String _listingStatus(StoreProduct product) {
     'refused' => 'Refused',
     'approved' => product.stock > 0 ? 'Published · Available' : 'Published · Sold out',
     _ => product.status,
+  };
+}
+
+Color _getListingStatusColor(StoreProduct product) {
+  if (product.pendingRequestType != null) return const Color(0xFF6B7280);
+  return switch (product.status) {
+    'pending' => const Color(0xFF6B7280),
+    'refused' => const Color(0xFFDC2626),
+    'approved' => product.stock > 0 ? const Color(0xFF059669) : const Color(0xFF6B7280),
+    _ => AppColors.textSecondary,
   };
 }
