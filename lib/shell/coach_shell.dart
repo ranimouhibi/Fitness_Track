@@ -9,6 +9,7 @@ class CoachShell extends StatelessWidget {
 
   static const _tabs = [
     ('/coach/profile', 'Profile', Icons.person_outline),
+    ('/coach/community', 'Community', Icons.forum_outlined),
     ('/coach/training', 'Training', Icons.fitness_center),
     ('/coach/nutrition', 'Nutrition', Icons.apple),
     ('/coach/store', 'Store', Icons.shopping_bag_outlined),

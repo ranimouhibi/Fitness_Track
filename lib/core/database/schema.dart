@@ -235,3 +235,34 @@ const List<String> schemaStatements = [
   'CREATE INDEX idx_checkins_user ON weekly_checkins(user_id)',
   'CREATE INDEX idx_content_requests_status ON content_requests(status)',
 ];
+
+const List<String> communitySchemaStatements = [
+  '''
+  CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT
+  )
+  ''',
+  '''
+  CREATE TABLE post_likes (
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (post_id, user_id)
+  )
+  ''',
+  '''
+  CREATE TABLE post_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+  ''',
+  'CREATE INDEX idx_posts_created_at ON posts(created_at)',
+  'CREATE INDEX idx_post_comments_post ON post_comments(post_id)',
+];

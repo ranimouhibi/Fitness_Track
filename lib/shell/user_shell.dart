@@ -9,6 +9,7 @@ class UserShell extends StatelessWidget {
 
   static const _tabs = [
     ('/profile', 'Profile', Icons.person_outline),
+    ('/community', 'Community', Icons.forum_outlined),
     ('/workout', 'Training', Icons.fitness_center),
     ('/nutrition', 'Nutrition', Icons.apple),
     ('/store', 'Store', Icons.shopping_bag_outlined),

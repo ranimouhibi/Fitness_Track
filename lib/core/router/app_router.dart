@@ -16,6 +16,7 @@ import '../../features/coaching/ui/bookings_page.dart';
 import '../../features/progress/routes.dart';
 import '../../features/admin/ui/coach_requests_page.dart';
 import '../../features/admin/ui/requests_inbox_page.dart';
+import '../../features/community/ui/community_page.dart';
 
 // Client-side coaching pages (users browse and book coaches).
 final _userCoachingRoutes = coachingRoutes
@@ -26,6 +27,7 @@ final _userCoachingRoutes = coachingRoutes
 // Coach-side pages: the same bar as the user, with Jobs last.
 final _coachRoutes = <RouteBase>[
   GoRoute(path: '/coach/profile', builder: (_, __) => const ProfilePage()),
+  GoRoute(path: '/coach/community', builder: (_, __) => const CommunityPage()),
   GoRoute(path: '/coach/training', builder: (_, __) => const WorkoutPage()),
   GoRoute(path: '/coach/nutrition', builder: (_, __) => const NutritionPage()),
   GoRoute(path: '/coach/store', builder: (_, __) => const StorePage()),
@@ -60,6 +62,7 @@ final appRouter = GoRouter(
           UserShell(location: state.uri.toString(), child: child),
       routes: [
         ...profileRoutes,
+        GoRoute(path: '/community', builder: (_, __) => const CommunityPage()),
         ...workoutRoutes,
         ...nutritionRoutes,
         ...storeRoutes,
