@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/media/media_store.dart';
 
 const muscleGroups = [
   'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Glutes', 'Cardio',
@@ -8,16 +9,6 @@ const muscleGroups = [
 const materialOptions = [
   'Machine', 'Dumbbell', 'Barbell', 'Cable', 'Bodyweight',
   'Kettlebell', 'Resistance band', 'Other',
-];
-
-const _starterExercises = [
-  ('Bench Press', 'Chest', 'Barbell', 'Intermediate'),
-  ('Incline Dumbbell Press', 'Chest', 'Dumbbell', 'Intermediate'),
-  ('Cable Fly', 'Chest', 'Cable', 'Beginner'),
-  ('Push-up', 'Chest', 'Bodyweight', 'Beginner'),
-  ('Pec Deck', 'Chest', 'Machine', 'Beginner'),
-  ('Dumbbell Pullover', 'Back', 'Dumbbell', 'Beginner'),
-  ('Wall Sit', 'Legs', 'Bodyweight', 'Beginner'),
 ];
 
 class Exercise {
@@ -88,24 +79,7 @@ Map<String, dynamic> exercisePayload({
 }
 
 class WorkoutRepository {
-  Future<Database> _ready() async {
-    final db = await DatabaseHelper.instance.database;
-    final count = Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM exercises')) ??
-        0;
-    if (count == 0) {
-      for (final e in _starterExercises) {
-        await db.insert('exercises', {
-          'name': e.$1,
-          'muscle_group': e.$2,
-          'equipment': e.$3,
-          'level': e.$4,
-          'status': 'approved',
-        });
-      }
-    }
-    return db;
-  }
+  Future<Database> _ready() => DatabaseHelper.instance.database;
 
   /// Admin sees approved exercises. Users and coaches also see their own pending ones.
   Future<List<Exercise>> exercisesForGroup({
@@ -178,8 +152,13 @@ class WorkoutRepository {
     });
   }
 
+  /// Saves the new details. If the photo was replaced, the old file is deleted.
   Future<void> updateExercise(int id, Map<String, dynamic> p) async {
     final db = await _ready();
+    final old = await db.query('exercises',
+        columns: ['media_path'], where: 'id = ?', whereArgs: [id], limit: 1);
+    final oldMedia = old.isEmpty ? null : old.first['media_path'] as String?;
+
     await db.update(
       'exercises',
       {
@@ -194,6 +173,8 @@ class WorkoutRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    if (oldMedia != p['media_path']) await deleteUserMedia(oldMedia);
   }
 
   Future<void> setExerciseStatus(int id, String status) async {
@@ -206,20 +187,34 @@ class WorkoutRepository {
     );
   }
 
+  /// Deletes the exercise and its photo file.
   /// Fails if the exercise is used in a program (the database blocks it).
   Future<void> deleteExercise(int id) async {
     final db = await _ready();
+    final rows = await db.query('exercises',
+        columns: ['media_path'], where: 'id = ?', whereArgs: [id], limit: 1);
     await db.delete('exercises', where: 'id = ?', whereArgs: [id]);
+    if (rows.isNotEmpty) {
+      await deleteUserMedia(rows.first['media_path'] as String?);
+    }
   }
 
   /// The submitter can cancel a request only while it is still pending.
+  /// Cancelling also deletes the photo file.
   Future<bool> cancelOwnPending(int id, int userId) async {
     final db = await _ready();
+    final rows = await db.query('exercises',
+        columns: ['media_path'],
+        where: "id = ? AND created_by = ? AND status = 'pending'",
+        whereArgs: [id, userId],
+        limit: 1);
+    if (rows.isEmpty) return false;
     final n = await db.delete(
       'exercises',
       where: "id = ? AND created_by = ? AND status = 'pending'",
       whereArgs: [id, userId],
     );
+    if (n > 0) await deleteUserMedia(rows.first['media_path'] as String?);
     return n > 0;
   }
 }

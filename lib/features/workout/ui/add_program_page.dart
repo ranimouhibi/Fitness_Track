@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/media/media_store.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
@@ -48,11 +51,16 @@ class AddProgramPage extends ConsumerStatefulWidget {
   /// When set, the form edits this program instead of adding one.
   final Program? existing;
 
+  /// Private programs belong to the user's progress only. They are never
+  /// shown in the Programs section and never sent to the admin.
+  final bool isPrivate;
+
   const AddProgramPage({
     super.key,
     this.isAdmin = false,
     this.initialGoal,
     this.existing,
+    this.isPrivate = false,
   });
 
   @override
@@ -66,11 +74,19 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
   final _description = TextEditingController();
   final _repo = ProgramRepository();
   final _changes = ChangeRequestRepository();
+  final _picker = ImagePicker();
 
   late String _goal;
   String _intensity = 'medium';
   List<Exercise> _library = [];
   final List<_DayForm> _days = List.generate(7, (_) => _DayForm());
+
+  /// Photo already saved (a data-set asset or a user file).
+  String? _currentMedia;
+
+  /// Photo chosen in this form, not yet saved.
+  String? _pickedPath;
+
   String? _error;
   bool _saving = false;
 
@@ -79,6 +95,7 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
     super.initState();
     final e = widget.existing;
     _goal = e?.goal ?? widget.initialGoal ?? 'gain';
+    _currentMedia = e?.mediaPath;
     if (e != null) {
       _name.text = e.name;
       _weeks.text = '${e.weeks}';
@@ -135,6 +152,18 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
       d.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _pickMedia() async {
+    final file = await _picker.pickImage(source: ImageSource.gallery);
+    if (file != null) setState(() => _pickedPath = file.path);
+  }
+
+  void _removeMedia() {
+    setState(() {
+      _pickedPath = null;
+      _currentMedia = null;
+    });
   }
 
   void _setRest(int day) {
@@ -242,6 +271,11 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
       _error = null;
     });
 
+    // Save a newly picked photo into the app's folder; keep the old one otherwise.
+    final media = _pickedPath != null
+        ? await saveUserMedia(_pickedPath!, 'program_media')
+        : _currentMedia;
+
     final payload = programPayload(
       name: _name.text,
       goal: _goal,
@@ -249,6 +283,7 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
       weeks: weeks,
       minutes: minutes,
       description: _description.text,
+      mediaPath: media,
       days: plan,
     );
 
@@ -268,6 +303,7 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
         payload: payload,
         userId: user.id,
         isAdmin: widget.isAdmin,
+        isPrivate: widget.isPrivate,
       );
     }
 
@@ -279,22 +315,35 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
     final editing = widget.existing != null;
     final title = editing
         ? 'Edit program'
-        : (widget.isAdmin ? 'Add program' : 'Add a program');
-    final buttonLabel = widget.isAdmin
-        ? 'Save'
-        : (editing ? 'Send edit to admin' : 'Submit to admin');
+        : widget.isPrivate
+            ? 'Create my program'
+            : (widget.isAdmin ? 'Add program' : 'Add a program');
+    final buttonLabel = widget.isPrivate
+        ? 'Save program'
+        : widget.isAdmin
+            ? 'Save'
+            : (editing ? 'Send edit to admin' : 'Submit to admin');
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (!widget.isAdmin)
+          if (!widget.isAdmin && !widget.isPrivate)
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: Text('Reviewed by an admin before it appears in the app.',
                   style: TextStyle(color: AppColors.textSecondary)),
             ),
+          if (widget.isPrivate)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                  'Only you will see this program, in your Progress section.',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+          _photoSection(),
+          const SizedBox(height: 16),
           TextField(
             controller: _name,
             maxLength: 60,
@@ -365,6 +414,50 @@ class _AddProgramPageState extends ConsumerState<AddProgramPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Photo picker: shows the chosen or saved picture, or a placeholder.
+  Widget _photoSection() {
+    final hasPhoto = _pickedPath != null || _currentMedia != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Program photo (optional)',
+            style: TextStyle(
+                fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: 170,
+            width: double.infinity,
+            child: _pickedPath != null
+                ? Image.file(File(_pickedPath!), fit: BoxFit.fill)
+                : mediaImage(_currentMedia),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _pickMedia,
+                icon: const Icon(Icons.upload_outlined),
+                label: Text(hasPhoto ? 'Change photo' : 'Add a photo'),
+              ),
+            ),
+            if (hasPhoto) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Remove photo',
+                onPressed: _removeMedia,
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 

@@ -3,26 +3,35 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import '../data/dataset_seeder.dart';
 import 'schema.dart';
+import 'schema_v2.dart';
 
 class DatabaseHelper {
   DatabaseHelper._();
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'fittrack.db';
-  static const _dbVersion = 2;
 
-  Database? _db;
+  /// Version 2 adds private programs, body measures and progress plans.
+  /// Version 3 adds the target weight of a progress plan.
+  static const _dbVersion = 3;
+
+  Future<Database>? _opening;
 
   /// Use this everywhere: `final db = await DatabaseHelper.instance.database;`
-  Future<Database> get database async {
-    _db ??= await _open();
-    return _db!;
-  }
+  /// The first call opens the database, creates or upgrades the tables and loads the data set.
+  Future<Database> get database => _opening ??= _openAndSeed();
 
   /// Same hash is used for sign-up and sign-in. Never store the plain password.
   static String hashPassword(String password) {
     return sha256.convert(utf8.encode(password)).toString();
+  }
+
+  Future<Database> _openAndSeed() async {
+    final db = await _open();
+    await DatasetSeeder.run(db);
+    return db;
   }
 
   Future<Database> _open() async {
@@ -38,25 +47,20 @@ class DatabaseHelper {
         for (final statement in schemaStatements) {
           await db.execute(statement);
         }
-        for (final statement in coachSchedulingStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in coachingTriggerStatements) {
+        for (final statement in schemaV2Statements) {
           await db.execute(statement);
         }
         await _seedAccounts(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          for (final statement in coachSchedulingStatements) {
+          for (final statement in schemaV2Statements) {
             await db.execute(statement);
           }
-          for (final statement in coachSchedulingBackfillStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in coachingTriggerStatements) {
-            await db.execute(statement);
-          }
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+              'ALTER TABLE progress_plans ADD COLUMN target_weight REAL');
         }
       },
     );
@@ -101,7 +105,8 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    await _db?.close();
-    _db = null;
+    final db = _opening == null ? null : await _opening;
+    await db?.close();
+    _opening = null;
   }
 }
