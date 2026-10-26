@@ -1,12 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/media/media_store.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/change_request_repository.dart';
 import '../data/workout_repository.dart';
 import 'add_exercise_page.dart';
 import 'pending_requests_page.dart';
+import 'widgets/training_style.dart';
 
 class ExercisesTab extends ConsumerStatefulWidget {
   /// Admin sees every approved exercise and the pending requests.
@@ -35,6 +36,15 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
     return 'Exercises';
   }
 
+  String? get _subtitle {
+    if (_detail != null) {
+      return '${_detail!.muscleGroup} · ${_detail!.level ?? 'All levels'}';
+    }
+    if (_group != null) return 'Choose an exercise';
+    if (_showRequests) return 'Your submissions';
+    return 'Pick a body part';
+  }
+
   /// Admin can manage any approved exercise. Users and coaches only their own.
   bool _canManage(Exercise e) {
     final user = ref.read(sessionProvider);
@@ -44,7 +54,11 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ));
   }
 
   Future<void> _openGroup(String group) async {
@@ -219,11 +233,12 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _Header(
+        TrainHeader(
           title: _title,
-          canGoBack: !_atHome,
-          onBack: _back,
-          onAdd: _add,
+          subtitle: _subtitle,
+          onBack: _atHome ? null : _back,
+          actionLabel: 'Add exercise',
+          onAction: _add,
         ),
         Expanded(child: _body()),
       ],
@@ -243,17 +258,12 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
     if (_group == null && !_showRequests) return _categories();
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_items.isEmpty) {
-      return Center(
-        child: Text(
-          _showRequests
-              ? 'You have not submitted any exercises yet.'
-              : 'No exercises in $_group yet.',
-          style: const TextStyle(color: AppColors.textSecondary),
-        ),
-      );
+      return TrainEmpty(_showRequests
+          ? 'You have not submitted any exercises yet.'
+          : 'No exercises in $_group yet.');
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: _items.length,
       itemBuilder: (_, i) {
         final e = _items[i];
@@ -272,40 +282,60 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
 
   Widget _categories() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.8,
           children: [
             for (final g in muscleGroups)
-              _GroupCard(
+              _GroupTile(
                 name: g,
                 image: 'assets/muscles/${g.toLowerCase()}.png',
                 onTap: () => _openGroup(g),
               ),
           ],
         ),
-        const SizedBox(height: 16),
-        Card(
-          child: ListTile(
-            leading: Icon(
-              widget.isAdmin ? Icons.pending_actions : Icons.inbox_outlined,
-              color: AppColors.deepBlue,
-            ),
-            title: Text(
-              widget.isAdmin ? 'Pending requests' : 'My requests',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(widget.isAdmin
-                ? 'New exercises and edit or delete requests'
-                : 'Exercises you submitted and their status'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: widget.isAdmin ? _openPending : _openRequests,
+        const SizedBox(height: 10),
+        TrainCard(
+          onTap: widget.isAdmin ? _openPending : _openRequests,
+          child: Row(
+            children: [
+              TrainIconTile(
+                icon: widget.isAdmin
+                    ? Icons.pending_actions
+                    : Icons.inbox_outlined,
+                size: 46,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.isAdmin ? 'Pending requests' : 'My requests',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: TrainStyle.navy,
+                          fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.isAdmin
+                          ? 'New exercises and edit or delete requests'
+                          : 'Exercises you submitted and their status',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+            ],
           ),
         ),
       ],
@@ -313,56 +343,12 @@ class _ExercisesTabState extends ConsumerState<ExercisesTab> {
   }
 }
 
-class _Header extends StatelessWidget {
-  final String title;
-  final bool canGoBack;
-  final VoidCallback onBack;
-  final VoidCallback onAdd;
-
-  const _Header({
-    required this.title,
-    required this.canGoBack,
-    required this.onBack,
-    required this.onAdd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 56, 8),
-      child: Row(
-        children: [
-          if (canGoBack)
-            IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back))
-          else
-            const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary),
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Add exercise'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GroupCard extends StatelessWidget {
+class _GroupTile extends StatelessWidget {
   final String name;
   final String image;
   final VoidCallback onTap;
 
-  const _GroupCard({
+  const _GroupTile({
     required this.name,
     required this.image,
     required this.onTap,
@@ -370,32 +356,63 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      color: AppColors.white,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                color: AppColors.softBlue,
-                padding: const EdgeInsets.all(8),
-                child: Image.asset(image, fit: BoxFit.contain),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: TrainStyle.softShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Material(
+          color: Colors.white,
+          child: InkWell(
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  decoration:
+                      const BoxDecoration(gradient: TrainStyle.surface),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 46),
+                  child: Image.asset(image, fit: BoxFit.contain),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          TrainStyle.navy.withValues(alpha: 0.92),
+                          TrainStyle.navy.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(name,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14)),
+                        ),
+                        const Icon(Icons.arrow_forward_ios,
+                            size: 12, color: Colors.white70),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -426,6 +443,7 @@ class _ExerciseCard extends StatelessWidget {
     final Widget trailing;
     if (canManage) {
       trailing = PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
         onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -436,7 +454,7 @@ class _ExerciseCard extends StatelessWidget {
       trailing = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StatusChip(status: exercise.status),
+          TrainStatus(exercise.status),
           IconButton(
             tooltip: 'Cancel request',
             icon: const Icon(Icons.close, color: Colors.red),
@@ -445,65 +463,48 @@ class _ExerciseCard extends StatelessWidget {
         ],
       );
     } else if (showStatus) {
-      trailing = _StatusChip(status: exercise.status);
+      trailing = TrainStatus(exercise.status);
     } else {
-      trailing = const Icon(Icons.chevron_right);
+      trailing = const Icon(Icons.chevron_right, color: AppColors.textSecondary);
     }
 
-    return Card(
+    return TrainCard(
+      onTap: onTap,
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        onTap: onTap,
-        leading: _Thumb(path: exercise.mediaPath),
-        title: Text(exercise.name,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(exercise.equipment ?? exercise.muscleGroup),
-        trailing: trailing,
+      child: Row(
+        children: [
+          TrainThumb(path: exercise.mediaPath),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  exercise.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: TrainStyle.navy),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    TrainPill(exercise.muscleGroup, color: AppColors.primary),
+                    if ((exercise.equipment ?? '').isNotEmpty)
+                      TrainPill(exercise.equipment!,
+                          color: AppColors.textSecondary),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          trailing,
+        ],
       ),
-    );
-  }
-}
-
-class _Thumb extends StatelessWidget {
-  final String? path;
-  const _Thumb({this.path});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = path != null && File(path!).existsSync();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: SizedBox(
-        width: 56,
-        height: 56,
-        child: hasImage
-            ? Image.file(File(path!), fit: BoxFit.cover)
-            : Container(
-                color: AppColors.softBlue,
-                child: const Icon(Icons.fitness_center,
-                    color: AppColors.deepBlue),
-              ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      'approved' => ('Approved', Colors.green),
-      'refused' => ('Refused', Colors.red),
-      _ => ('Pending', Colors.orange),
-    };
-    return Chip(
-      label: Text(label,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide.none,
     );
   }
 }
@@ -523,133 +524,135 @@ class _ExerciseDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        exercise.mediaPath != null && File(exercise.mediaPath!).existsSync();
     final description = exercise.description ?? '';
     final steps = exercise.steps;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: hasImage
-                ? Image.file(File(exercise.mediaPath!), fit: BoxFit.cover)
-                : Container(
-                    color: AppColors.softBlue,
-                    child: const Center(
-                      child: Icon(Icons.image_outlined,
-                          size: 48, color: AppColors.deepBlue),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: TrainStyle.glowShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  mediaImage(exercise.mediaPath),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 70,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            TrainStyle.navy.withValues(alpha: 0.55),
+                            TrainStyle.navy.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        Text(exercise.name,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 8),
+        Text(
+          exercise.name,
+          style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: TrainStyle.navy,
+              letterSpacing: 0.2),
+        ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _InfoChip(icon: Icons.accessibility_new, text: exercise.muscleGroup),
+            TrainPill(exercise.muscleGroup,
+                icon: Icons.accessibility_new, color: AppColors.primary),
             if ((exercise.equipment ?? '').isNotEmpty)
-              _InfoChip(icon: Icons.fitness_center, text: exercise.equipment!),
+              TrainPill(exercise.equipment!, icon: Icons.fitness_center),
+            if ((exercise.level ?? '').isNotEmpty)
+              TrainPill(exercise.level!, icon: Icons.bar_chart),
           ],
         ),
         if (description.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const _SectionTitle('Description'),
-          Text(description, style: const TextStyle(height: 1.4)),
+          const TrainSectionTitle('Description'),
+          TrainCard(
+            margin: EdgeInsets.zero,
+            child: Text(description,
+                style: const TextStyle(height: 1.5, fontSize: 14)),
+          ),
         ],
-        const SizedBox(height: 20),
-        const _SectionTitle('Instructions'),
+        const TrainSectionTitle('Instructions'),
         if (steps.isEmpty)
-          const Text('No instructions yet.',
-              style: TextStyle(color: AppColors.textSecondary))
+          const TrainCard(
+            margin: EdgeInsets.zero,
+            child: Text('No instructions yet.',
+                style: TextStyle(color: AppColors.textSecondary)),
+          )
         else
           for (var i = 0; i < steps.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+            TrainCard(
+              margin: const EdgeInsets.only(bottom: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: AppColors.primary,
-                    child: Text('${i + 1}',
-                        style: const TextStyle(
-                            color: AppColors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 10),
+                  TrainBadge(i + 1),
+                  const SizedBox(width: 12),
                   Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
                       child: Text(steps[i],
-                          style: const TextStyle(height: 1.4))),
+                          style: const TextStyle(height: 1.45, fontSize: 14)),
+                    ),
+                  ),
                 ],
               ),
             ),
         if (canManage) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: TrainButton(
+                  label: 'Edit',
+                  icon: Icons.edit_outlined,
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onDelete,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   label: const Text('Delete',
-                      style: TextStyle(color: Colors.red)),
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
           ),
         ],
       ],
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.deepBlue)),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _InfoChip({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(icon, size: 16, color: AppColors.deepBlue),
-      label: Text(text),
     );
   }
 }

@@ -1,21 +1,28 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common/sqlite_api.dart';
+import '../data/dataset_seeder.dart';
 import 'schema.dart';
+import 'schema_v2.dart';
 
 class DatabaseHelper {
   DatabaseHelper._();
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const _dbName = 'fittrack.db';
-  static const _dbVersion = 3;
 
-  Database? _db;
+  /// 2: store upgrade and coach scheduling.
+  /// 3: wishlist, reviews, contact requests.
+  /// 4: training tables (private programs, body measures, progress plans)
+  ///    and the target weight of a progress plan.
+  static const _dbVersion = 4;
+
   DatabaseFactory? _webFactory;
+  Future<Database>? _opening;
 
   /// Initialize web database factory
   Future<void> initializeWeb(DatabaseFactory factory) async {
@@ -23,14 +30,17 @@ class DatabaseHelper {
   }
 
   /// Use this everywhere: `final db = await DatabaseHelper.instance.database;`
-  Future<Database> get database async {
-    _db ??= await _open();
-    return _db!;
-  }
+  Future<Database> get database => _opening ??= _openAndSeed();
 
   /// Same hash is used for sign-up and sign-in. Never store the plain password.
   static String hashPassword(String password) {
     return sha256.convert(utf8.encode(password)).toString();
+  }
+
+  Future<Database> _openAndSeed() async {
+    final db = await _open();
+    await DatasetSeeder.run(db);
+    return db;
   }
 
   Future<Database> _open() async {
@@ -39,116 +49,67 @@ class DatabaseHelper {
         _dbName,
         options: OpenDatabaseOptions(
           version: _dbVersion,
-          onConfigure: (db) async {
-            await db.execute('PRAGMA foreign_keys = ON');
-          },
-          onCreate: (db, version) async {
-            for (final statement in schemaStatements) {
-              await db.execute(statement);
-            }
-            for (final statement in wishlistTableStatements) {
-              await db.execute(statement);
-            }
-            for (final statement in reviewTableStatements) {
-              await db.execute(statement);
-            }
-            for (final statement in contactRequestTableStatements) {
-              await db.execute(statement);
-            }
-            await _seedAccounts(db);
-          },
-          onUpgrade: (db, oldVersion, newVersion) async {
-            if (oldVersion < 2) {
-              for (final statement in storeUpgradeV2Statements) {
-                await db.execute(statement);
-              }
-            }
-            if (oldVersion < 3) {
-              for (final statement in wishlistTableStatements) {
-                await db.execute(statement);
-              }
-              for (final statement in reviewTableStatements) {
-                await db.execute(statement);
-              }
-              for (final statement in contactRequestTableStatements) {
-                await db.execute(statement);
-              }
-            }
-          },
+          onConfigure: _onConfigure,
+          onCreate: _onCreate,
+          onUpgrade: _onUpgrade,
         ),
       );
     }
-    
+
     final path = join(await getDatabasesPath(), _dbName);
     return openDatabase(
       path,
       version: _dbVersion,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
-      },
-      onCreate: (db, version) async {
-        for (final statement in schemaStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in coachSchedulingStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in coachingTriggerStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in wishlistTableStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in reviewTableStatements) {
-          await db.execute(statement);
-        }
-        for (final statement in contactRequestTableStatements) {
-          await db.execute(statement);
-        }
-        await _seedAccounts(db);
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          for (final statement in storeUpgradeV2Statements) {
-            await db.execute(statement);
-          }
-          for (final statement in coachSchedulingStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in coachSchedulingBackfillStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in coachingTriggerStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in wishlistTableStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in reviewTableStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in contactRequestTableStatements) {
-            await db.execute(statement);
-          }
-        }
-        if (oldVersion < 3) {
-          for (final statement in wishlistTableStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in reviewTableStatements) {
-            await db.execute(statement);
-          }
-          for (final statement in contactRequestTableStatements) {
-            await db.execute(statement);
-          }
-        }
-      },
+      onConfigure: _onConfigure,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  Future<void> _onCreate(Database db, int version) async {
+    await _run(db, schemaStatements);
+    await _run(db, schemaV2Statements);
+    await _run(db, wishlistTableStatements);
+    await _run(db, reviewTableStatements);
+    await _run(db, contactRequestTableStatements);
+    await _seedAccounts(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _run(db, storeUpgradeV2Statements);
+      await _run(db, coachSchedulingStatements);
+      await _run(db, coachSchedulingBackfillStatements);
+      await _run(db, coachingTriggerStatements);
+    }
+    if (oldVersion < 4) {
+      await _run(db, schemaV2Statements);
+      await _run(db, wishlistTableStatements);
+      await _run(db, reviewTableStatements);
+      await _run(db, contactRequestTableStatements);
+      await _run(db,
+          const ['ALTER TABLE progress_plans ADD COLUMN target_weight REAL']);
+    }
+  }
+
+  /// Runs statements one by one. A statement that fails because the table or
+  /// column already exists is logged and skipped.
+  Future<void> _run(Database db, List<String> statements) async {
+    for (final statement in statements) {
+      try {
+        await db.execute(statement);
+      } catch (e) {
+        debugPrint('DB statement skipped: $e');
+      }
+    }
   }
 
   /// Test accounts, created only when the database file is first created.
   Future<void> _seedAccounts(Database db) async {
-    // Admin
     await db.insert('users', {
       'role': 'admin',
       'first_name': 'Admin',
@@ -157,7 +118,6 @@ class DatabaseHelper {
       'password_hash': hashPassword('Admin123!'),
     });
 
-    // User: ghaith hajji
     await db.insert('users', {
       'role': 'user',
       'first_name': 'Ghaith',
@@ -170,7 +130,6 @@ class DatabaseHelper {
       'weight_kg': 98,
     });
 
-    // Coach: khalil ayari (approved, certificate skipped)
     await db.insert('users', {
       'role': 'coach',
       'first_name': 'Khalil',
@@ -185,7 +144,8 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    await _db?.close();
-    _db = null;
+    final db = _opening == null ? null : await _opening;
+    await db?.close();
+    _opening = null;
   }
 }

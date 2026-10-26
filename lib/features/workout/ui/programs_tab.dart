@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/media/media_store.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/change_request_repository.dart';
 import '../data/program_repository.dart';
 import 'add_program_page.dart';
 import 'pending_requests_page.dart';
+import 'widgets/training_style.dart';
 
 class ProgramsTab extends ConsumerStatefulWidget {
   /// Admin sees every approved program and the pending requests.
@@ -35,6 +37,15 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
     return 'Programs';
   }
 
+  String? get _subtitle {
+    if (_detail != null) {
+      return '${goals[_detail!.goal] ?? ''} · ${intensities[_detail!.intensity] ?? ''}';
+    }
+    if (_goal != null) return 'Choose an intensity level';
+    if (_showRequests) return 'Your submissions';
+    return 'Pick your goal';
+  }
+
   /// Admin can manage any approved program. Users and coaches only their own.
   bool _canManage(Program p) {
     final user = ref.read(sessionProvider);
@@ -44,7 +55,11 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ));
   }
 
   Future<void> _openGoal(String goal) async {
@@ -225,11 +240,12 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _Header(
+        TrainHeader(
           title: _title,
-          canGoBack: !_atHome,
-          onBack: _back,
-          onAdd: _add,
+          subtitle: _subtitle,
+          onBack: _atHome ? null : _back,
+          actionLabel: 'Add program',
+          onAction: _add,
         ),
         Expanded(child: _body()),
       ],
@@ -257,7 +273,7 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
 
   Widget _home() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
         _GoalCard(
           title: 'Gain weight',
@@ -265,29 +281,49 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
           image: 'assets/programs/gain.jpg',
           onTap: () => _openGoal('gain'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         _GoalCard(
           title: 'Lose weight',
           subtitle: 'Burn fat and get lean',
           image: 'assets/programs/lose.jpg',
           onTap: () => _openGoal('lose'),
         ),
-        const SizedBox(height: 24),
-        Card(
-          child: ListTile(
-            leading: Icon(
-              widget.isAdmin ? Icons.pending_actions : Icons.inbox_outlined,
-              color: AppColors.deepBlue,
-            ),
-            title: Text(
-              widget.isAdmin ? 'Pending requests' : 'My requests',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(widget.isAdmin
-                ? 'New programs and edit or delete requests'
-                : 'Programs you added and their status'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: widget.isAdmin ? _openPending : _openRequests,
+        const SizedBox(height: 18),
+        TrainCard(
+          onTap: widget.isAdmin ? _openPending : _openRequests,
+          child: Row(
+            children: [
+              TrainIconTile(
+                icon: widget.isAdmin
+                    ? Icons.pending_actions
+                    : Icons.inbox_outlined,
+                size: 46,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.isAdmin ? 'Pending requests' : 'My requests',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: TrainStyle.navy,
+                          fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.isAdmin
+                          ? 'New programs and edit or delete requests'
+                          : 'Programs you added and their status',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+            ],
           ),
         ),
       ],
@@ -296,7 +332,7 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
 
   Widget _intensityBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -305,12 +341,12 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
           const Text('Intensity',
               style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600)),
+                  fontWeight: FontWeight.w700)),
           for (final e in intensities.entries)
-            ChoiceChip(
-              label: Text(e.value),
+            TrainChoice(
+              label: e.value,
               selected: _intensity == e.key,
-              onSelected: (_) {
+              onTap: () {
                 setState(() => _intensity = e.key);
                 _load();
               },
@@ -323,17 +359,12 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
   Widget _list() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_items.isEmpty) {
-      return Center(
-        child: Text(
-          _showRequests
-              ? 'You have not added any programs yet.'
-              : 'No programs at this level yet.',
-          style: const TextStyle(color: AppColors.textSecondary),
-        ),
-      );
+      return TrainEmpty(_showRequests
+          ? 'You have not added any programs yet.'
+          : 'No programs at this level yet.');
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: _items.length,
       itemBuilder: (_, i) {
         final p = _items[i];
@@ -347,50 +378,6 @@ class _ProgramsTabState extends ConsumerState<ProgramsTab> {
           onCancel: () => _cancelRequest(p),
         );
       },
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final String title;
-  final bool canGoBack;
-  final VoidCallback onBack;
-  final VoidCallback onAdd;
-
-  const _Header({
-    required this.title,
-    required this.canGoBack,
-    required this.onBack,
-    required this.onAdd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 56, 8),
-      child: Row(
-        children: [
-          if (canGoBack)
-            IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back))
-          else
-            const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary),
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Add program'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -410,53 +397,71 @@ class _GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height: 180,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(image, fit: BoxFit.cover),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xCC000000)],
+    return Container(
+      height: 190,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: TrainStyle.glowShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                mediaImage(image),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        TrainStyle.navy.withValues(alpha: 0.9),
+                        TrainStyle.navy.withValues(alpha: 0.05),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 14,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(title,
-                              style: const TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(subtitle,
-                              style: const TextStyle(
-                                  color: AppColors.white, fontSize: 13)),
-                        ],
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 16,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(title,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 2),
+                            Text(subtitle,
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 13)),
+                          ],
+                        ),
                       ),
-                    ),
-                    const Icon(Icons.chevron_right, color: AppColors.white),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_forward,
+                            color: Colors.white, size: 18),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -488,6 +493,7 @@ class _ProgramCard extends StatelessWidget {
     final Widget trailing;
     if (canManage) {
       trailing = PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
         onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -498,7 +504,7 @@ class _ProgramCard extends StatelessWidget {
       trailing = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StatusChip(status: program.status),
+          TrainStatus(program.status),
           IconButton(
             tooltip: 'Cancel request',
             icon: const Icon(Icons.close, color: Colors.red),
@@ -507,31 +513,52 @@ class _ProgramCard extends StatelessWidget {
         ],
       );
     } else if (showStatus) {
-      trailing = _StatusChip(status: program.status);
+      trailing = TrainStatus(program.status);
     } else {
-      trailing = const Icon(Icons.chevron_right);
+      trailing = const Icon(Icons.chevron_right, color: AppColors.textSecondary);
     }
 
-    return Card(
+    return TrainCard(
+      onTap: onTap,
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.softBlue,
-            borderRadius: BorderRadius.circular(10),
+      child: Row(
+        children: [
+          TrainThumb(path: program.mediaPath),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  program.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: TrainStyle.navy),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    TrainPill('${program.weeks} wks',
+                        icon: Icons.calendar_today,
+                        color: AppColors.primary),
+                    TrainPill('${program.trainingDays} days/wk',
+                        icon: Icons.repeat,
+                        color: AppColors.textSecondary),
+                    TrainPill('${program.minutes} min',
+                        icon: Icons.timer_outlined,
+                        color: AppColors.textSecondary),
+                  ],
+                ),
+              ],
+            ),
           ),
-          child: const Icon(Icons.fitness_center, color: AppColors.deepBlue),
-        ),
-        title: Text(program.name,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          '${program.weeks} weeks · ${program.trainingDays} training days/week · '
-          '${program.minutes} min',
-        ),
-        trailing: trailing,
+          trailing,
+        ],
       ),
     );
   }
@@ -554,93 +581,143 @@ class _ProgramDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final description = program.description ?? '';
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        Text(program.name,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: TrainStyle.glowShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: mediaImage(program.mediaPath),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          program.name,
+          style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: TrainStyle.navy),
+        ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _InfoChip(text: goals[program.goal] ?? program.goal),
-            _InfoChip(text: intensities[program.intensity] ?? program.intensity),
-            _InfoChip(text: '${program.weeks} weeks'),
-            _InfoChip(text: '${program.minutes} min per session'),
+            TrainPill(goals[program.goal] ?? program.goal,
+                icon: program.goal == 'gain'
+                    ? Icons.trending_up
+                    : Icons.trending_down,
+                color: AppColors.primary),
+            TrainPill(intensities[program.intensity] ?? program.intensity,
+                icon: Icons.bolt),
           ],
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.softBlue,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.calendar_today, color: AppColors.deepBlue),
-              const SizedBox(width: 12),
-              Text('${program.trainingDays} training days per week',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.deepBlue)),
-            ],
-          ),
+        Row(
+          children: [
+            TrainStat(
+                icon: Icons.calendar_view_week,
+                value: '${program.weeks}',
+                label: 'Weeks'),
+            const SizedBox(width: 10),
+            TrainStat(
+                icon: Icons.timer_outlined,
+                value: '${program.minutes}',
+                label: 'Min / session'),
+            const SizedBox(width: 10),
+            TrainStat(
+                icon: Icons.fitness_center,
+                value: '${program.trainingDays}',
+                label: 'Days / week'),
+          ],
         ),
         if (description.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const _SectionTitle('About'),
-          Text(description, style: const TextStyle(height: 1.4)),
+          const TrainSectionTitle('About'),
+          TrainCard(
+            margin: EdgeInsets.zero,
+            child: Text(description,
+                style: const TextStyle(height: 1.5, fontSize: 14)),
+          ),
         ],
-        const SizedBox(height: 20),
-        const _SectionTitle('Weekly plan'),
+        const TrainSectionTitle('Weekly plan'),
         for (final day in program.days)
-          Card(
+          TrainCard(
             margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              onTap: () => showModalBottomSheet(
-                context: context,
-                showDragHandle: true,
-                builder: (_) => _DaySheet(day: day),
-              ),
-              leading: CircleAvatar(
-                radius: 18,
-                backgroundColor:
-                    day.isRest ? AppColors.border : AppColors.primary,
-                child: Icon(
-                  day.isRest ? Icons.bedtime_outlined : Icons.fitness_center,
-                  size: 18,
-                  color:
-                      day.isRest ? AppColors.textSecondary : AppColors.white,
+            onTap: () => showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              backgroundColor: Colors.white,
+              builder: (_) => _DaySheet(day: day),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: day.isRest ? null : TrainStyle.accent,
+                    color: day.isRest ? TrainStyle.line : null,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    day.isRest ? Icons.bedtime_outlined : Icons.fitness_center,
+                    color: day.isRest ? AppColors.textSecondary : Colors.white,
+                    size: 20,
+                  ),
                 ),
-              ),
-              title: Text(day.weekday,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(day.isRest ? 'Rest' : day.muscle ?? ''),
-              trailing: const Icon(Icons.chevron_right),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(day.weekday,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: TrainStyle.navy)),
+                      const SizedBox(height: 2),
+                      Text(day.isRest ? 'Rest' : day.muscle ?? '',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    color: AppColors.textSecondary),
+              ],
             ),
           ),
         if (canManage) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: TrainButton(
+                  label: 'Edit',
+                  icon: Icons.edit_outlined,
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onDelete,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   label: const Text('Delete',
-                      style: TextStyle(color: Colors.red)),
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
@@ -665,93 +742,71 @@ class _DaySheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(day.weekday,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 4),
-            Text(day.isRest ? 'Rest' : day.muscle ?? '',
-                style: const TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
+            Row(
+              children: [
+                TrainIconTile(
+                  icon: day.isRest
+                      ? Icons.bedtime_outlined
+                      : Icons.fitness_center,
+                  size: 44,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(day.weekday,
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: TrainStyle.navy)),
+                      Text(day.isRest ? 'Recovery day' : day.muscle ?? '',
+                          style: const TextStyle(
+                              color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             if (day.isRest)
               const Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                  padding: EdgeInsets.symmetric(vertical: 28),
                   child: Text('Rest',
                       style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.deepBlue)),
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary)),
                 ),
-              ),
-            if (!day.isRest)
+              )
+            else
               for (final e in day.exercises)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.softBlue,
-                    child: Icon(Icons.fitness_center,
-                        size: 16, color: AppColors.deepBlue),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: TrainStyle.line),
+                    boxShadow: TrainStyle.softShadow,
                   ),
-                  title: Text(e.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: Text('${e.sets} × ${e.reps}',
-                      style: const TextStyle(
-                          color: AppColors.deepBlue,
-                          fontWeight: FontWeight.bold)),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(e.name,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: TrainStyle.navy)),
+                      ),
+                      TrainPill('${e.sets} × ${e.reps}',
+                          color: AppColors.primary),
+                    ],
+                  ),
                 ),
           ],
         ),
       ),
     );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      'approved' => ('Approved', Colors.green),
-      'refused' => ('Refused', Colors.red),
-      _ => ('Pending', Colors.orange),
-    };
-    return Chip(
-      label: Text(label,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide.none,
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.deepBlue)),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final String text;
-  const _InfoChip({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(label: Text(text));
   }
 }

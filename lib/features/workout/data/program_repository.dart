@@ -1,83 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/media/media_store.dart';
 import 'workout_repository.dart';
 
 const goals = {'gain': 'Gain weight', 'lose': 'Lose weight'};
 const intensities = {'low': 'Low', 'medium': 'Medium', 'high': 'High'};
 const weekdayNames = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-];
-
-class _StarterDay {
-  final String? muscle;
-  final List<(String, int, int)> exercises;
-  const _StarterDay.rest()
-      : muscle = null,
-        exercises = const [];
-  const _StarterDay.train(this.muscle, this.exercises);
-}
-
-class _StarterProgram {
-  final String name;
-  final String goal;
-  final String intensity;
-  final int weeks;
-  final int minutes;
-  final String description;
-  final List<_StarterDay> days;
-  const _StarterProgram({
-    required this.name,
-    required this.goal,
-    required this.intensity,
-    required this.weeks,
-    required this.minutes,
-    required this.description,
-    required this.days,
-  });
-}
-
-const _starterPrograms = [
-  _StarterProgram(
-    name: 'Mass Builder',
-    goal: 'gain',
-    intensity: 'medium',
-    weeks: 8,
-    minutes: 60,
-    description: 'Build muscle with heavy chest, back and leg days.',
-    days: [
-      _StarterDay.train('Chest', [
-        ('Bench Press', 4, 8),
-        ('Incline Dumbbell Press', 3, 10),
-        ('Cable Fly', 3, 12),
-      ]),
-      _StarterDay.train('Back', [('Dumbbell Pullover', 3, 12)]),
-      _StarterDay.rest(),
-      _StarterDay.train('Legs', [('Wall Sit', 3, 12)]),
-      _StarterDay.rest(),
-      _StarterDay.train('Chest', [
-        ('Push-up', 3, 15),
-        ('Pec Deck', 3, 12),
-      ]),
-      _StarterDay.rest(),
-    ],
-  ),
-  _StarterProgram(
-    name: 'Fat Burn Start',
-    goal: 'lose',
-    intensity: 'low',
-    weeks: 6,
-    minutes: 40,
-    description: 'A gentle full-body start to build the habit.',
-    days: [
-      _StarterDay.train('Legs', [('Wall Sit', 3, 15)]),
-      _StarterDay.rest(),
-      _StarterDay.train('Chest', [('Push-up', 3, 15)]),
-      _StarterDay.rest(),
-      _StarterDay.train('Back', [('Dumbbell Pullover', 3, 12)]),
-      _StarterDay.rest(),
-      _StarterDay.rest(),
-    ],
-  ),
 ];
 
 class ProgramExerciseLine {
@@ -115,6 +44,7 @@ class Program {
   final int daysPerWeek;
   final int minutes;
   final String? description;
+  final String? mediaPath;
   final String status;
   final int? createdBy;
   final List<ProgramDay> days;
@@ -128,6 +58,7 @@ class Program {
     required this.daysPerWeek,
     required this.minutes,
     this.description,
+    this.mediaPath,
     required this.status,
     this.createdBy,
     required this.days,
@@ -167,6 +98,7 @@ Map<String, dynamic> programPayload({
   required int weeks,
   required int minutes,
   String? description,
+  String? mediaPath,
   required List<DayPlan> days,
 }) {
   return {
@@ -176,69 +108,14 @@ Map<String, dynamic> programPayload({
     'weeks': weeks,
     'minutes': minutes,
     'description': description?.trim(),
+    'media_path': mediaPath,
     'days_per_week': days.where((d) => !d.isRest).length,
     'days': [for (final d in days) d.toJson()],
   };
 }
 
 class ProgramRepository {
-  Future<Database> get _db => DatabaseHelper.instance.database;
-
-  Future<Database> _ready() async {
-    final db = await _db;
-    final count = Sqflite.firstIntValue(await db.rawQuery(
-            "SELECT COUNT(*) FROM programs WHERE type = 'workout'")) ??
-        0;
-    if (count == 0) await _seedStarters(db);
-    return db;
-  }
-
-  Future<void> _seedStarters(Database db) async {
-    await WorkoutRepository().allExercises();
-
-    final ids = <String, int>{};
-    final rows = await db.query('exercises', columns: ['id', 'name']);
-    for (final r in rows) {
-      ids[r['name'] as String] = r['id'] as int;
-    }
-
-    await db.transaction((txn) async {
-      for (final s in _starterPrograms) {
-        final programId = await txn.insert('programs', {
-          'name': s.name,
-          'type': 'workout',
-          'goal': s.goal,
-          'intensity': s.intensity,
-          'weeks': s.weeks,
-          'days_per_week': s.days.where((d) => d.muscle != null).length,
-          'minutes_per_session': s.minutes,
-          'description': s.description,
-          'status': 'approved',
-        });
-        for (var i = 0; i < s.days.length; i++) {
-          final d = s.days[i];
-          final dayId = await txn.insert('program_days', {
-            'program_id': programId,
-            'day_index': i + 1,
-            'title': d.muscle ?? 'Rest',
-            'is_rest': d.muscle == null ? 1 : 0,
-          });
-          for (var p = 0; p < d.exercises.length; p++) {
-            final e = d.exercises[p];
-            final exerciseId = ids[e.$1];
-            if (exerciseId == null) continue;
-            await txn.insert('program_exercises', {
-              'program_day_id': dayId,
-              'exercise_id': exerciseId,
-              'sets': e.$2,
-              'reps': e.$3,
-              'position': p + 1,
-            });
-          }
-        }
-      }
-    });
-  }
+  Future<Database> _ready() => DatabaseHelper.instance.database;
 
   Future<List<ProgramExerciseLine>> _exercisesOf(Database db, int dayId) async {
     final rows = await db.rawQuery('''
@@ -290,6 +167,7 @@ class ProgramRepository {
       daysPerWeek: (r['days_per_week'] as int?) ?? 0,
       minutes: (r['minutes_per_session'] as int?) ?? 0,
       description: r['description'] as String?,
+      mediaPath: r['media_path'] as String?,
       status: r['status'] as String,
       createdBy: r['created_by'] as int?,
       days: await _daysOf(db, id),
@@ -334,6 +212,7 @@ class ProgramRepository {
   }
 
   /// Admin sees approved programs. Users and coaches also see their own pending ones.
+  /// Private programs are never listed here.
   Future<List<Program>> programsFor({
     required String goal,
     required String intensity,
@@ -344,13 +223,14 @@ class ProgramRepository {
     final rows = isAdmin
         ? await db.query(
             'programs',
-            where: "type = 'workout' AND goal = ? AND intensity = ? AND status = 'approved'",
+            where: "type = 'workout' AND is_private = 0 AND goal = ? "
+                "AND intensity = ? AND status = 'approved'",
             whereArgs: [goal, intensity],
             orderBy: 'name',
           )
         : await db.query(
             'programs',
-            where: "type = 'workout' AND goal = ? AND intensity = ? "
+            where: "type = 'workout' AND is_private = 0 AND goal = ? AND intensity = ? "
                 "AND (status = 'approved' OR (created_by = ? AND status = 'pending'))",
             whereArgs: [goal, intensity, userId],
             orderBy: 'name',
@@ -358,24 +238,49 @@ class ProgramRepository {
     return [for (final r in rows) await _toProgram(db, r)];
   }
 
-  /// Everything this user added, with its status.
+  /// Everything this user added to the Programs section, with its status.
   Future<List<Program>> myRequests(int userId) async {
     final db = await _ready();
     final rows = await db.query(
       'programs',
-      where: "type = 'workout' AND created_by = ?",
+      where: "type = 'workout' AND is_private = 0 AND created_by = ?",
       whereArgs: [userId],
       orderBy: 'id DESC',
     );
     return [for (final r in rows) await _toProgram(db, r)];
   }
 
-  /// New programs waiting for review, with the submitter's name.
+  /// Approved public programs, used by the progress form.
+  Future<List<Program>> approvedPrograms() async {
+    final db = await _ready();
+    final rows = await db.query(
+      'programs',
+      where: "type = 'workout' AND is_private = 0 AND status = 'approved'",
+      orderBy: 'goal, intensity, name',
+    );
+    return [for (final r in rows) await _toProgram(db, r)];
+  }
+
+  /// The newest private program a user created in their progress section.
+  Future<Program?> latestPrivateProgram(int userId) async {
+    final db = await _ready();
+    final rows = await db.query(
+      'programs',
+      where: "type = 'workout' AND is_private = 1 AND created_by = ?",
+      whereArgs: [userId],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _toProgram(db, rows.first);
+  }
+
+  /// New public programs waiting for review, with the submitter's name.
   Future<List<(Program, String)>> pendingPrograms() async {
     final db = await _ready();
     final rows = await db.query(
       'programs',
-      where: "type = 'workout' AND status = 'pending'",
+      where: "type = 'workout' AND is_private = 0 AND status = 'pending'",
       orderBy: 'id DESC',
     );
     return [
@@ -390,13 +295,15 @@ class ProgramRepository {
   }
 
   /// Admin adds are approved right away. Others wait as pending.
-  Future<void> addProgram({
+  /// Private programs are approved but hidden from everyone except their owner.
+  Future<int> addProgram({
     required Map<String, dynamic> payload,
     required int userId,
     required bool isAdmin,
+    bool isPrivate = false,
   }) async {
     final db = await _ready();
-    await db.transaction((txn) async {
+    return db.transaction<int>((txn) async {
       final programId = await txn.insert('programs', {
         'name': payload['name'],
         'type': 'workout',
@@ -406,34 +313,45 @@ class ProgramRepository {
         'days_per_week': payload['days_per_week'],
         'minutes_per_session': payload['minutes'],
         'description': payload['description'],
+        'media_path': payload['media_path'],
         'created_by': userId,
-        'status': isAdmin ? 'approved' : 'pending',
+        'is_private': isPrivate ? 1 : 0,
+        'status': (isPrivate || isAdmin) ? 'approved' : 'pending',
       });
       await _insertDays(txn, programId, payload['days'] as List);
+      return programId;
     });
   }
 
   /// Replaces the program's details and its weekly plan.
+  /// If the photo changed, the old user-added photo file is deleted.
   Future<void> updateProgram(int id, Map<String, dynamic> p) async {
     final db = await _ready();
+    final old = await db.query('programs',
+        columns: ['media_path'], where: 'id = ?', whereArgs: [id], limit: 1);
+    final oldMedia = old.isEmpty ? null : old.first['media_path'] as String?;
+
+    final values = <String, Object?>{
+      'name': p['name'],
+      'goal': p['goal'],
+      'intensity': p['intensity'],
+      'weeks': p['weeks'],
+      'days_per_week': p['days_per_week'],
+      'minutes_per_session': p['minutes'],
+      'description': p['description'],
+    };
+    final hasMedia = p.containsKey('media_path');
+    if (hasMedia) values['media_path'] = p['media_path'];
+
     await db.transaction((txn) async {
-      await txn.update(
-        'programs',
-        {
-          'name': p['name'],
-          'goal': p['goal'],
-          'intensity': p['intensity'],
-          'weeks': p['weeks'],
-          'days_per_week': p['days_per_week'],
-          'minutes_per_session': p['minutes'],
-          'description': p['description'],
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      await txn.update('programs', values, where: 'id = ?', whereArgs: [id]);
       await txn.delete('program_days', where: 'program_id = ?', whereArgs: [id]);
       await _insertDays(txn, id, p['days'] as List);
     });
+
+    if (hasMedia && oldMedia != p['media_path']) {
+      await deleteUserMedia(oldMedia);
+    }
   }
 
   Future<void> setProgramStatus(int id, String status) async {
@@ -441,20 +359,33 @@ class ProgramRepository {
     await db.update('programs', {'status': status}, where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Deletes the program, its days and its photo file (if the user added it).
   Future<void> deleteProgram(int id) async {
     final db = await _ready();
+    final rows = await db.query('programs',
+        columns: ['media_path'], where: 'id = ?', whereArgs: [id], limit: 1);
     await db.delete('programs', where: 'id = ?', whereArgs: [id]);
+    if (rows.isNotEmpty) {
+      await deleteUserMedia(rows.first['media_path'] as String?);
+    }
   }
 
   /// The submitter can cancel a request only while it is still pending.
-  /// The program's days and exercises are removed with it.
+  /// Cancelling also deletes the photo file.
   Future<bool> cancelOwnPending(int id, int userId) async {
     final db = await _ready();
+    final rows = await db.query('programs',
+        columns: ['media_path'],
+        where: "id = ? AND created_by = ? AND status = 'pending'",
+        whereArgs: [id, userId],
+        limit: 1);
+    if (rows.isEmpty) return false;
     final n = await db.delete(
       'programs',
       where: "id = ? AND created_by = ? AND status = 'pending'",
       whereArgs: [id, userId],
     );
+    if (n > 0) await deleteUserMedia(rows.first['media_path'] as String?);
     return n > 0;
   }
 }

@@ -34,7 +34,7 @@ const List<String> schemaStatements = [
   ''',
 
   // ---------- Training ----------
-   '''
+  '''
   CREATE TABLE exercises (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -52,7 +52,7 @@ const List<String> schemaStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )
   ''',
-   '''
+  '''
   CREATE TABLE programs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -63,6 +63,7 @@ const List<String> schemaStatements = [
     days_per_week INTEGER,
     minutes_per_session INTEGER,
     description TEXT,
+    media_path TEXT,
     kcal_target INTEGER,
     protein_pct INTEGER,
     carbs_pct INTEGER,
@@ -212,7 +213,6 @@ const List<String> schemaStatements = [
   ''',
 
   // ---------- Admin request inbox ----------
-  // Every user or coach change waits here until an admin accepts or refuses it.
   '''
   CREATE TABLE content_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,7 +228,7 @@ const List<String> schemaStatements = [
   )
   ''',
 
-  // ---------- Indexes for the screens that filter or sort ----------
+  // ---------- Indexes ----------
   'CREATE INDEX idx_coach_requests_status ON coach_requests(status)',
   'CREATE INDEX idx_exercises_status ON exercises(status)',
   'CREATE INDEX idx_program_days_program ON program_days(program_id)',
