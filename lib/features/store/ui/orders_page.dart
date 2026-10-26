@@ -61,6 +61,26 @@ class OrdersPage extends ConsumerWidget {
             Text('My Orders'),
           ],
         ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: IconButton(
+              tooltip: 'Scan order QR',
+              onPressed: () => context.push('$basePath/scan?mode=order'),
+              icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 22),
+            ),
+          ),
+        ],
       ),
       body: FutureBuilder<List<StoreOrder>>(
         future: StoreRepository().ordersForUser(user.id),
@@ -173,8 +193,13 @@ class OrdersPage extends ConsumerWidget {
 
 class OrderDetailsPage extends ConsumerWidget {
   final int orderId;
+  final String basePath;
 
-  const OrderDetailsPage({super.key, required this.orderId});
+  const OrderDetailsPage({
+    super.key,
+    required this.orderId,
+    this.basePath = '/store',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -447,6 +472,25 @@ class OrderDetailsPage extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text(order.deliveryAddress),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => context.push('$basePath/orders/${order.id}/qr'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.qr_code_2),
+                      label: const Text(
+                        'Show QR Code',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

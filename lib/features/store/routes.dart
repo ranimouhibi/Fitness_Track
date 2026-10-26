@@ -6,11 +6,14 @@ import 'ui/my_listings_page.dart';
 import 'ui/orders_page.dart';
 import 'ui/product_details_page.dart';
 import 'ui/product_form_page.dart';
+import 'ui/qr_code_display_page.dart';
+import 'ui/qr_scanner_page.dart';
 import 'ui/sell_item_page.dart';
 import 'ui/seller_contact_requests_page.dart';
 import 'ui/store_admin_page.dart';
 import 'ui/store_page.dart';
 import 'ui/wishlist_page.dart';
+import 'data/store_repository.dart';
 
 final storeRoutes = storeRoutesFor('/store');
 
@@ -74,7 +77,25 @@ List<RouteBase> storeRoutesFor(String basePath, {bool admin = false}) => [
           path: '$basePath/orders/:orderId',
           builder: (_, state) => OrderDetailsPage(
             orderId: int.parse(state.pathParameters['orderId']!),
+            basePath: basePath,
           ),
+        ),
+        GoRoute(
+          path: '$basePath/orders/:orderId/qr',
+          builder: (_, state) {
+            final orderId = int.parse(state.pathParameters['orderId']!);
+            return QRCodeDisplayOrderPage(orderId: orderId);
+          },
+        ),
+        GoRoute(
+          path: '$basePath/scan',
+          builder: (_, state) {
+            final mode = state.uri.queryParameters['mode'];
+            return QRScannerPage(
+              basePath: basePath,
+              mode: mode == 'order' ? ScanMode.order : ScanMode.product,
+            );
+          },
         ),
         GoRoute(
           path: '$basePath/listings',

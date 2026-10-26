@@ -638,6 +638,37 @@ class StoreRepository {
     return rows.isEmpty ? null : _orderFromRow(db, rows.first);
   }
 
+  Future<StoreOrder?> orderById(int orderId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'store_orders',
+      where: 'id = ?',
+      whereArgs: [orderId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : _orderFromRow(db, rows.first);
+  }
+
+  Future<List<StoreProduct>> publicProducts({String? searchTerm}) async {
+    final db = await _db;
+    final whereConditions = <String>["status = 'approved'"];
+    final whereArgs = <Object?>[];
+    
+    if (searchTerm != null && searchTerm.trim().isNotEmpty) {
+      whereConditions.add('(title LIKE ? OR description LIKE ?)');
+      whereArgs.addAll(['%${searchTerm.trim()}%', '%${searchTerm.trim()}%']);
+    }
+    
+    final rows = await db.query(
+      'products',
+      where: whereConditions.join(' AND '),
+      whereArgs: whereArgs,
+      orderBy: 'title COLLATE NOCASE',
+      limit: 50,
+    );
+    return rows.map(StoreProduct.fromMap).toList();
+  }
+
   Future<StoreOrder> _orderFromRow(DatabaseExecutor db, Map<String, Object?> row) async {
     final itemRows = await db.query(
       'store_order_items',

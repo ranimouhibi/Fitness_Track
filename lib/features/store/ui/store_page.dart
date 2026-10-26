@@ -137,6 +137,24 @@ class _StorePageState extends ConsumerState<StorePage> {
               ],
             ),
             child: IconButton(
+              tooltip: 'Scan product',
+              onPressed: () => context.push('${widget.basePath}/scan?mode=product'),
+              icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF2F6BCB), size: 22),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 4, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: IconButton(
               tooltip: 'My wishlist',
               onPressed: () => context.push('${widget.basePath}/wishlist'),
               icon: Badge(
